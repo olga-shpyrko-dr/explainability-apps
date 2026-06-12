@@ -1,0 +1,16 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+datarobot>=3.5
+pandas>=2.0
+openpyxl
+anthropic>=0.28
+litellm>=1.40
+python-dotenv
+pydantic-settings>=2.0
+email-validator>=2.0
+numpy
+# SQL Server export (scripts/export_to_sql.py)
+sqlalchemy>=2.0
+pyodbc
+
+aiofiles>=23.0

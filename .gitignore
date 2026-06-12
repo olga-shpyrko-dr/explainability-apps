@@ -1,0 +1,28 @@
+# Secrets & config
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Backend runtime cache
+backend/.prediction_dataset_cache.json
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+
+# Data — not committed (contains customer/training data)
+data/
+
+# Reference notebooks & scratch files
+ref/
+
+# macOS
+.DS_Store

@@ -1,0 +1,50 @@
+{
+  "groups": {
+    "Policy & Product": [
+      "Product_Desc", "Cover_Shrt_Nm", "Benefit_Combos_Detailed", "Benefit Combos Detailed",
+      "AP_Amt", "Term", "Commencement_Date", "Maturity_Date", "TTG_v2",
+      "IndexationDesc", "CoverType", "PlanCode", "SumAssured_Life1",
+      "SumAssured_Life2", "BenefitAmount", "PolicyTerm"
+    ],
+    "Policy Portfolio": [
+      "ProtPolsIF_Life1", "ProtPolsIF_Life2", "MortgPolsIF_Life1", "MortgPolsIF_Life2",
+      "WOLPolsIF_Life1", "WOLPolsIF_Life2",
+      "ProtPolsOOF_Last2yrs_Life1", "ProtPolsOOF_Last2yrs_Life2",
+      "TotalPolsIF_Life1", "TotalPolsIF_Life2",
+      "TotalSumAssured_Life1", "TotalSumAssured_Life2",
+      "PolsIF_PerAgent", "NumberOfPolicies", "PortfolioValue"
+    ],
+    "Agent / Adviser": [
+      "Sl_Level3_Shortname", "Sl_Level6_Shortname",
+      "Servicing_Agent_Cd", "AuthorisedAdvisor", "Source_Of_Business",
+      "Pols_IF_PerAgent", "CommissionScaleCode", "AgentTenure", "AgencyCode"
+    ],
+    "Sociodemographic": [
+      "Age_life1", "Age_life2", "Age_At_Review_L2", "Gender", "SmokerStatus",
+      "JobTitle_L1", "FamilyStatusName_L1", "EmploymentStatus_L1",
+      "NumberofDependents_L1", "MaritalStatus", "Occupation_L1",
+      "ResidenceRegion"
+    ],
+    "Financial Profile": [
+      "NetIncomeAmount_L1", "SalaryAmount_L1", "TotalIncome_L1",
+      "HouseholdDisposableIncomeMonthly_L1", "FamilyHomeOutstandingBalance_L1",
+      "TotalLoansOutstandingBalance_L1", "MortgageAmount_L1",
+      "NetWorth_L1", "DebtToIncomeRatio_L1",
+      "CreditScore_L1", "FinancialStressIndex_L1",
+      "FoodMonthlyAmount_L1", "MotorMonthlyAmount_L1",
+      "OtherExpensesMonthlyAmount_L1", "ChildCareMonthlyAmount_L1",
+      "HolidyMonthlyAmount_L1", "HolidayMonthlyAmount_L1",
+      "MedicalMonthlyAmount_L1", "TotalMonthlyExpenditure_L1"
+    ],
+    "Engagement & Reviews": [
+      "OnlineServiesLogins_Last12Months_Life1", "OnlineServiesLogins_Last12Months_Life2",
+      "MonthsSinceReview", "ReviewType_L1", "ReviewType_L2",
+      "DiscussedDeathProtection_L1", "DiscussedMortgages_L1",
+      "LastLoginDate", "AppLogins_Last6Months", "EmailOpenRate",
+      "NumberOfReviews"
+    ],
+    "Persona": [
+      "PersonaDesc_1", "PersonaDesc_2"
+    ]
+  }
+}
