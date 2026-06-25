@@ -37,12 +37,12 @@ export default function GroupExplanationChart({ groups, loading }: Props) {
   if (!groups.length) return <div style={placeholderStyle}>No explanation data for this cohort.</div>;
 
   const visibleGroups = groups.filter((g) => {
-    if (direction === "positive") return g.avg_shap > 0;
-    if (direction === "negative") return g.avg_shap < 0;
+    if (direction === "positive") return g.sum_shap > 0;
+    if (direction === "negative") return g.sum_shap < 0;
     return true;
   });
 
-  const chartData = visibleGroups.map((g) => ({ ...g, abs_shap: Math.abs(g.avg_shap) }));
+  const chartData = visibleGroups;
 
   return (
     <div>
@@ -78,14 +78,13 @@ export default function GroupExplanationChart({ groups, loading }: Props) {
           margin={{ top: 4, right: 40, left: 160, bottom: 4 }}
           key={direction}
         >
-          <XAxis type="number" tick={{ fontSize: 11 }} />
+          <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => v.toFixed(4)} />
           <YAxis
             type="category"
             dataKey="feature_group"
             tick={{ fontSize: 12 }}
             width={155}
           />
-          <ReferenceLine x={0} stroke="#999" />
           <Tooltip
             content={({ payload }) => {
               if (!payload?.[0]) return null;
@@ -93,7 +92,8 @@ export default function GroupExplanationChart({ groups, loading }: Props) {
               return (
                 <div style={tooltipStyle}>
                   <b>{d.feature_group}</b>
-                  <div>Avg SHAP: {d.avg_shap.toFixed(5)}</div>
+                  <div>Avg |SHAP|: {d.avg_abs_shap.toFixed(5)}</div>
+                  <div>Net SHAP (sum): {d.sum_shap.toFixed(5)}</div>
                   <div>Coverage: {d.n_rows_with_coverage} rows ({d.coverage_pct}%)</div>
                   <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
                     Click to {expanded === d.feature_group ? "collapse" : "expand"} features
@@ -103,7 +103,7 @@ export default function GroupExplanationChart({ groups, loading }: Props) {
             }}
           />
           <Bar
-            dataKey="avg_shap"
+            dataKey="avg_abs_shap"
             radius={[0, 3, 3, 0]}
             cursor="pointer"
             onClick={(data: GroupStat) => {
@@ -113,7 +113,7 @@ export default function GroupExplanationChart({ groups, loading }: Props) {
             {chartData.map((entry) => (
               <Cell
                 key={entry.feature_group}
-                fill={entry.avg_shap >= 0 ? "#e05252" : "#81FBA5"}
+                fill={entry.sum_shap >= 0 ? "#e05252" : "#81FBA5"}
                 opacity={expanded && expanded !== entry.feature_group ? 0.4 : 1}
               />
             ))}

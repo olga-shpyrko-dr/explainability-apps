@@ -127,16 +127,23 @@ def group_shap_summary(
     cohort_exp["shap_strength"] = pd.to_numeric(cohort_exp["shap_strength"], errors="coerce")
 
     # Group-level aggregation
+    # avg_abs_shap — mean(|strength|) — drives bar height and sort order;
+    #   preserves signal when strong features of opposite sign are present in the group.
+    # sum_shap — sum of signed strengths — drives colour (net direction);
+    #   a single strong feature outweighs many weak ones of the opposite sign.
+    cohort_exp["abs_shap"] = cohort_exp["shap_strength"].abs()
     group_agg = (
         cohort_exp.groupby("feature_group")
         .agg(
-            avg_shap=("shap_strength", "mean"),
+            avg_abs_shap=("abs_shap", "mean"),
+            sum_shap=("shap_strength", "sum"),
             n_rows_with_coverage=(row_id_col, "nunique"),
         )
         .reset_index()
     )
     group_agg["coverage_pct"] = (group_agg["n_rows_with_coverage"] / n_cohort * 100).round(1)
-    group_agg["avg_shap"] = group_agg["avg_shap"].round(5)
+    group_agg["avg_abs_shap"] = group_agg["avg_abs_shap"].round(5)
+    group_agg["sum_shap"] = group_agg["sum_shap"].round(5)
 
     # Feature-level breakdown per group (top 5 features by |avg_shap|)
     feat_agg = (
@@ -159,7 +166,7 @@ def group_shap_summary(
     for row in result:
         row["top_features"] = top_features.get(row["feature_group"], [])
 
-    result.sort(key=lambda r: abs(r["avg_shap"]), reverse=True)
+    result.sort(key=lambda r: r["avg_abs_shap"], reverse=True)
     return result
 
 

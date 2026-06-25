@@ -22,7 +22,8 @@ export interface FeatureStat {
 
 export interface GroupStat {
   feature_group: string;
-  avg_shap: number;
+  avg_abs_shap: number;  // bar height — mean(|shap|), preserves signal when features cancel
+  sum_shap: number;      // net direction — drives colour; weighted by strength not feature count
   n_rows_with_coverage: number;
   coverage_pct: number;
   top_features: FeatureStat[];
