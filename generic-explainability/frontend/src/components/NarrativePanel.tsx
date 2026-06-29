@@ -133,7 +133,7 @@ export default function NarrativePanel({ filters, nRows, cohortWarningMinRows }:
               Generated via {PROVIDER_LABELS[providerUsed] ?? providerUsed}
             </div>
           )}
-          <div style={{ whiteSpace: "pre-wrap" }}>{text}</div>
+          <NarrativeText text={text} />
           {disclaimer && (
             <p style={{ fontFamily: "'Fragment Mono', monospace", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.05em", color: "#6C6A6B", marginTop: 12, borderTop: "1px solid #E4E4E4", paddingTop: 8 }}>
               {disclaimer}
@@ -141,6 +141,40 @@ export default function NarrativePanel({ filters, nRows, cohortWarningMinRows }:
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline markdown renderer — handles **bold**, *italic*, blank-line paragraphs
+// ---------------------------------------------------------------------------
+
+function renderInline(text: string): React.ReactNode[] {
+  // Split on **...** and *...* tokens
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**"))
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith("*") && part.endsWith("*"))
+      return <em key={i}>{part.slice(1, -1)}</em>;
+    return part;
+  });
+}
+
+function NarrativeText({ text }: { text: string }) {
+  // Split into paragraphs on blank lines
+  const paragraphs = text.split(/\n{2,}/);
+  return (
+    <div>
+      {paragraphs.map((para, i) => {
+        const trimmed = para.trim();
+        if (!trimmed) return null;
+        return (
+          <p key={i} style={{ margin: i === 0 ? "0 0 12px" : "12px 0 0", lineHeight: 1.75 }}>
+            {renderInline(trimmed)}
+          </p>
+        );
+      })}
     </div>
   );
 }

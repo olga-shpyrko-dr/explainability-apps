@@ -182,8 +182,11 @@ def _call_dr_gateway(
         api_base=gateway_base,
         api_key=settings.datarobot_api_token,
         max_tokens=max_tokens,
+        response_format={"type": "json_object"},
     )
-    return response.choices[0].message.content
+    content = response.choices[0].message.content
+    logger.info("DR Gateway raw response: %.500s", content)
+    return content
 
 
 def _call_dr_deployment(

@@ -4,11 +4,11 @@ import { fetchAppConfig, fetchCohort, fetchGroups, fetchRow } from "./api";
 import CohortFilter from "./components/CohortFilter";
 import DatasetSelector from "./components/DatasetSelector";
 import GroupExplanationChart from "./components/GroupExplanationChart";
+import InlineNarrative from "./components/InlineNarrative";
 import WaterfallChart from "./components/WaterfallChart";
-import NarrativePanel from "./components/NarrativePanel";
 import ScoreHistogram from "./components/ScoreHistogram";
 
-type Tab = "groups" | "row" | "narrative";
+type Tab = "groups" | "row";
 
 const C = {
   green:  "#81FBA5",
@@ -58,16 +58,19 @@ function App() {
     return () => clearTimeout(t);
   }, [refresh]);
 
-  async function lookupRow() {
-    if (!rowId.trim()) return;
+  async function lookupRow(id?: string) {
+    const target = (id ?? rowId).trim();
+    if (!target) return;
+    if (id) setRowId(id);
+    setTab("row");
     setRowLoading(true);
     setRowError("");
     setRowData(null);
     try {
-      const r = await fetchRow(rowId.trim());
+      const r = await fetchRow(target);
       setRowData(r);
     } catch {
-      setRowError(`"${rowId}" not found.`);
+      setRowError(`"${target}" not found.`);
     } finally {
       setRowLoading(false);
     }
@@ -91,9 +94,8 @@ function App() {
   const subtitle = appConfig?.app_subtitle ?? "";
 
   const TABS: { id: Tab; label: string }[] = [
-    { id: "groups",    label: "Group Explanations" },
-    { id: "row",       label: `Individual ${entityLabel.charAt(0).toUpperCase() + entityLabel.slice(1)}` },
-    { id: "narrative", label: "AI Narrative" },
+    { id: "groups", label: "Group Explanations" },
+    { id: "row",    label: `Individual ${entityLabel.charAt(0).toUpperCase() + entityLabel.slice(1)}` },
   ];
 
   return (
@@ -178,6 +180,7 @@ function App() {
                 factorNegativeLabel={appConfig?.factor_negative_label ?? "reduces risk"}
                 maxExplanations={appConfig?.max_explanations ?? 4}
               />
+              <InlineNarrative mode="group" filters={filters} nRows={profile?.n_rows ?? 0} />
             </div>
           )}
 
@@ -195,30 +198,37 @@ function App() {
                 />
                 <button onClick={lookupRow} style={primaryBtn}>Look up</button>
               </div>
+              {profile?.sample_row_ids && profile.sample_row_ids.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontFamily: "'Fragment Mono', monospace", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6C6A6B", marginBottom: 6 }}>
+                    Highest-scoring {entityLabelPlural} in cohort
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {profile.sample_row_ids.map((id) => (
+                      <button key={id} onClick={() => lookupRow(id)} style={sampleRowBtn}>
+                        {id}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {rowError && <p style={{ color: "#c0392b", fontSize: 13, margin: "0 0 8px" }}>{rowError}</p>}
               {rowData && (
-                <WaterfallChart
-                  rowId={rowData.row_id}
-                  prediction={rowData.prediction}
-                  waterfall={rowData.waterfall}
-                  loading={rowLoading}
-                  highScoreLabel={appConfig?.high_score_label ?? "high risk"}
-                  factorPositiveLabel={appConfig?.factor_positive_label ?? "increases risk"}
-                  factorNegativeLabel={appConfig?.factor_negative_label ?? "reduces risk"}
-                />
+                <>
+                  <WaterfallChart
+                    rowId={rowData.row_id}
+                    prediction={rowData.prediction}
+                    waterfall={rowData.waterfall}
+                    loading={rowLoading}
+                    highScoreLabel={appConfig?.high_score_label ?? "high risk"}
+                    lowScoreLabel={appConfig?.low_score_label ?? "low risk"}
+                    populationMean={profile?.score_stats_full.mean ?? null}
+                    factorPositiveLabel={appConfig?.factor_positive_label ?? "increases risk"}
+                    factorNegativeLabel={appConfig?.factor_negative_label ?? "reduces risk"}
+                  />
+                  <InlineNarrative mode="row" rowId={rowData.row_id} nRows={1} />
+                </>
               )}
-            </div>
-          )}
-
-          {/* Narrative */}
-          {tab === "narrative" && (
-            <div style={cardStyle}>
-              <div style={cardEyebrow}>AI NARRATIVE SUMMARY</div>
-              <NarrativePanel
-                filters={filters}
-                nRows={profile?.n_rows ?? 0}
-                cohortWarningMinRows={30}
-              />
             </div>
           )}
         </main>
@@ -312,6 +322,17 @@ const primaryBtn: React.CSSProperties = {
   fontSize: 13,
   fontFamily: "'DM Sans', system-ui, sans-serif",
   fontWeight: 500,
+};
+
+const sampleRowBtn: React.CSSProperties = {
+  fontFamily: "'Fragment Mono', monospace",
+  fontSize: 11,
+  padding: "4px 10px",
+  cursor: "pointer",
+  background: "#F5F5F5",
+  border: "1px solid #E4E4E4",
+  borderRadius: 2,
+  color: "#0B0B0B",
 };
 
 export default App;

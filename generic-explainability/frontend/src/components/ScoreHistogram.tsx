@@ -14,7 +14,7 @@ interface Props {
 export default function ScoreHistogram({ data, height = 160 }: Props) {
   if (!data.length) return null;
   const chartData = data.map((b) => ({
-    label: `${(b.bin_start * 100).toFixed(0)}–${(b.bin_end * 100).toFixed(0)}`,
+    label: `${b.bin_start.toFixed(2)}–${b.bin_end.toFixed(2)}`,
     count: b.count,
   }));
 

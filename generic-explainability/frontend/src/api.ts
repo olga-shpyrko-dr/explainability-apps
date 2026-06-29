@@ -58,6 +58,7 @@ export interface CohortProfile {
   score_stats: { mean: number; median: number; p90: number };
   score_stats_full: { mean: number; median: number; p90: number };
   score_histogram: { bin_start: number; bin_end: number; count: number }[];
+  sample_row_ids: string[];
 }
 
 export interface FeatureStat {
@@ -163,6 +164,19 @@ export const postNarrative = (
       filters,
       custom_instruction: customInstruction,
       include_outcome_rate: includeOutcomeRate,
+      provider: provider ?? null,
+    })
+    .then((r) => r.data);
+
+export const postRowNarrative = (
+  rowId: string,
+  customInstruction = "",
+  provider?: string,
+) =>
+  api
+    .post<{ narrative: string; provider_used: string; disclaimer: string }>("/api/narrative/row", {
+      row_id: rowId,
+      custom_instruction: customInstruction,
       provider: provider ?? null,
     })
     .then((r) => r.data);

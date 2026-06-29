@@ -102,9 +102,6 @@ export default function CohortFilter({ appConfig, filters, onChange }: Props) {
         </>
       )}
 
-      <div style={{ fontFamily: "'Fragment Mono', monospace", fontSize: 9, color: "#6C6A6B", marginTop: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        Top-{max_explanations} explanations per row
-      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ Cohort filtering engine and SHAP aggregation.
 
 from __future__ import annotations
 
+import math
 from typing import Any, Optional
 import numpy as np
 import pandas as pd
@@ -55,6 +56,8 @@ def cohort_profile(
     full_df: pd.DataFrame,
     prediction_col: str = "prediction",
     score_histogram_bins: int = 20,
+    row_id_col: str = "id",
+    sample_size: int = 5,
 ) -> dict[str, Any]:
     """Return summary statistics for the cohort vs. full population."""
     n = len(cohort_df)
@@ -75,6 +78,16 @@ def cohort_profile(
         bins=score_histogram_bins,
     )
 
+    # Sample rows sorted by prediction score descending (highest-risk first)
+    if row_id_col in cohort_df.columns and n > 0:
+        if prediction_col in cohort_df.columns:
+            sample_df = cohort_df.nlargest(sample_size, prediction_col, keep="first")
+        else:
+            sample_df = cohort_df.head(sample_size)
+        sample_row_ids = sample_df[row_id_col].dropna().astype(str).tolist()
+    else:
+        sample_row_ids = []
+
     return {
         "n_rows": n,
         "n_total": n_total,
@@ -82,6 +95,7 @@ def cohort_profile(
         "score_stats": score_stats(cohort_df),
         "score_stats_full": score_stats(full_df),
         "score_histogram": score_hist,
+        "sample_row_ids": sample_row_ids,
     }
 
 
@@ -200,12 +214,24 @@ def row_explanation(
     exp_mask = explanation_long["row_id"].astype(str) == str(row_id)
     expl_rows = explanation_long[exp_mask].sort_values("explanation_rank")
 
-    prediction = float(row_data[prediction_col]) if prediction_col in scored_population.columns else None
+    if prediction_col in scored_population.columns:
+        _pred = float(row_data[prediction_col])
+        prediction = None if (math.isnan(_pred) or math.isinf(_pred)) else _pred
+    else:
+        prediction = None
 
-    waterfall = expl_rows[[
-        "explanation_rank", "feature_name", "shap_strength",
-        "actual_value", "qualitative_strength", "feature_group",
-    ]].to_dict("records")
+    def _clean(v: Any) -> Any:
+        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+            return None
+        return v
+
+    waterfall = [
+        {k: _clean(val) for k, val in rec.items()}
+        for rec in expl_rows[[
+            "explanation_rank", "feature_name", "shap_strength",
+            "actual_value", "qualitative_strength", "feature_group",
+        ]].to_dict("records")
+    ]
 
     return {
         "row_id": str(row_id),

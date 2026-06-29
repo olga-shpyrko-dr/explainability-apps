@@ -41,7 +41,7 @@ from config_loader import (
 )
 from cohort import apply_filters, cohort_profile, group_shap_summary, row_explanation
 from llm_client import available_providers, default_provider
-from narrative import generate_narrative
+from narrative import generate_narrative, generate_row_narrative
 from pipeline import build_tables, get_dataset_name, list_use_case_datasets, load_precalculated_dataset
 
 logging.basicConfig(level=logging.INFO)
@@ -320,6 +320,7 @@ def get_cohort(filters: Optional[str] = Query(None)):
         cohort_df, df,
         prediction_col=_prediction_col(),
         score_histogram_bins=_state["score_histogram_bins"],
+        row_id_col=_row_id_col(),
     )
     return profile
 
@@ -393,6 +394,7 @@ def post_narrative(req: NarrativeRequest):
         cohort_df, df,
         prediction_col=_prediction_col(),
         score_histogram_bins=_state["score_histogram_bins"],
+        row_id_col=_row_id_col(),
     )
 
     row_ids = cohort_df[_row_id_col()].astype(str).tolist()
@@ -422,6 +424,49 @@ def post_narrative(req: NarrativeRequest):
             narrative_max_tokens=_state["narrative_max_tokens"],
             narrative_groups_in_prompt=_state["narrative_groups_in_prompt"],
             narrative_features_per_group=_state["narrative_features_per_group"],
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    used_provider = req.provider or default_provider(cfg)
+    return {
+        "narrative": text,
+        "provider_used": used_provider,
+        "disclaimer": "AI-generated summary — for indicative use only. Verify against source data before acting.",
+    }
+
+
+# ---------------------------------------------------------------------------
+# /api/narrative/row
+# ---------------------------------------------------------------------------
+
+class RowNarrativeRequest(BaseModel):
+    row_id: str
+    custom_instruction: str = ""
+    provider: Optional[str] = None
+
+
+@app.post("/api/narrative/row")
+def post_row_narrative(req: RowNarrativeRequest):
+    cfg = get_settings()
+    nc = _state["narrative_cfg"]
+
+    row_data = row_explanation(
+        req.row_id, _pop(), _expl(),
+        row_id_col=_row_id_col(),
+        prediction_col=_prediction_col(),
+    )
+    if row_data is None:
+        raise HTTPException(status_code=404, detail=f"Row '{req.row_id}' not found")
+
+    try:
+        text = generate_row_narrative(
+            row_data=row_data,
+            nc=nc,
+            settings=cfg,
+            provider=req.provider,
+            custom_instruction=req.custom_instruction,
+            narrative_max_tokens=_state["narrative_max_tokens"],
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))

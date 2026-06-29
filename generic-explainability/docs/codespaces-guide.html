@@ -346,14 +346,11 @@
     <div class="step">
       <div class="step-num">01</div>
       <div class="step-body">
-        <h2>Fork the repository</h2>
-        <p>Fork the public app repository on GitHub so you can commit your domain configuration files without modifying the shared source.</p>
-        <pre><code><span class="comment"># Repository to fork</span>
-github.com/olga-shpyrko-dr/explainability-apps
-
-<span class="comment"># The generic app lives under:</span>
-generic-explainability/</code></pre>
-        <p>Keep <code>.env</code> out of version control — it is already in <code>.gitignore</code>. Domain config files (<code>narrative_config.json</code>, <code>profile_config.json</code>, <code>feature_group_mapping.json</code>) can and should be committed to the fork.</p>
+        <h2>Clone the repository in your Codespace terminal</h2>
+        <p>Once your Codespace is open, clone the repository and navigate into the app subfolder.</p>
+        <pre><code>git clone https://github.com/olga-shpyrko-dr/explainability-apps.git
+cd explainability-apps/generic-explainability</code></pre>
+        <p>Keep <code>.env</code> out of version control — it is already in <code>.gitignore</code>. Domain config files (<code>narrative_config.json</code>, <code>profile_config.json</code>, <code>feature_group_mapping.json</code>) are safe to edit and commit for a specific customer deployment.</p>
       </div>
     </div>
 
@@ -361,24 +358,12 @@ generic-explainability/</code></pre>
     <div class="step">
       <div class="step-num">02</div>
       <div class="step-body">
-        <h2>Create a Codespace from the fork</h2>
-        <p>In DataRobot, navigate to <strong>Workbench → Codespaces → New Codespace</strong>. Connect your forked GitHub repository and select the branch you want to deploy.</p>
-        <p>Wait for the environment to initialise. Codespaces will install Python and Node dependencies defined in the repo automatically.</p>
-        <div class="note">
-          If Codespaces prompts for a devcontainer configuration, the repo includes one at <code>.devcontainer/devcontainer.json</code>. Accept it.
-        </div>
-      </div>
-    </div>
-
-    <!-- STEP 3 -->
-    <div class="step">
-      <div class="step-num">03</div>
-      <div class="step-body">
-        <h2>Generate a scoring sample <span style="font-weight:400;color:#888;font-size:14px;">(first-time only)</span></h2>
-        <p>If the customer does not yet have a scored AI Catalog dataset with SHAP explanation columns, generate one from the model's holdout partition.</p>
-        <pre><code>cd generic-explainability/backend
-
-<span class="comment"># Uncomment PROJECT_ID and MODEL_ID in .env first, then:</span>
+        <h2>Obtain a scoring dataset <span style="font-weight:400;color:#888;font-size:14px;">(first-time only)</span></h2>
+        <p>The app needs an AI Catalog dataset ID to score against. Use whichever path applies:</p>
+        <p><strong>Option A — already generated locally:</strong> if you ran <code>create_scoring_sample.py --upload</code> on your machine, the dataset is already in the DR AI Catalog. Copy the printed ID directly into <code>.env</code> as <code>SCORING_DATASET_ID</code>. Skip to Step 3.</p>
+        <p><strong>Option B — upload a CSV manually:</strong> drag-and-drop your scored CSV into DR AI Catalog via the UI, then copy the dataset ID into <code>.env</code>.</p>
+        <p><strong>Option C — generate inside the Codespace:</strong> run the helper script after setting <code>PROJECT_ID</code> and <code>MODEL_ID</code> in <code>.env</code>.</p>
+        <pre><code>cd backend
 python create_scoring_sample.py \
   --upload \
   --dataset-name "Customer — Holdout Scoring Sample" \
@@ -387,13 +372,13 @@ python create_scoring_sample.py \
       </div>
     </div>
 
-    <!-- STEP 4 -->
+    <!-- STEP 3 -->
     <div class="step">
-      <div class="step-num">04</div>
+      <div class="step-num">03</div>
       <div class="step-body">
         <h2>Configure the app</h2>
         <p>Copy the template and fill in the values for this customer environment.</p>
-        <pre><code>cd generic-explainability/backend
+        <pre><code>cd backend
 cp .env.template .env</code></pre>
 
         <table class="config-table">
@@ -427,7 +412,7 @@ cp .env.template .env</code></pre>
             </tr>
             <tr>
               <td>SCORING_DATASET_ID</td>
-              <td>AI Catalog dataset to score (from Step 3)</td>
+              <td>AI Catalog dataset to score (from Step 2)</td>
               <td class="req">required</td>
             </tr>
             <tr>
@@ -460,12 +445,12 @@ cp .env.template .env</code></pre>
       </div>
     </div>
 
-    <!-- STEP 5 -->
+    <!-- STEP 4 -->
     <div class="step">
-      <div class="step-num">05</div>
+      <div class="step-num">04</div>
       <div class="step-body">
         <h2>Customise domain configuration</h2>
-        <p>Edit the three JSON files in <code>backend/</code> to match the customer's use case. These can be committed to the fork.</p>
+        <p>Edit the three JSON files in <code>backend/</code> to match the customer's use case. These can be committed back if you fork the repo.</p>
         <div class="custom-files">
           <div class="custom-file">
             <span class="fname">narrative_config.json</span>
@@ -483,21 +468,21 @@ cp .env.template .env</code></pre>
       </div>
     </div>
 
-    <!-- STEP 6 -->
+    <!-- STEP 5 -->
     <div class="step">
-      <div class="step-num">06</div>
+      <div class="step-num">05</div>
       <div class="step-body">
         <h2>Launch the app</h2>
         <p>Start the backend and frontend in two terminal tabs within the Codespace.</p>
         <pre><code><span class="comment"># Terminal 1 — FastAPI backend</span>
-cd generic-explainability/backend
-pip install -r requirements.txt
+cd backend
+pip install -r ../requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload</code></pre>
         <pre><code><span class="comment"># Terminal 2 — React frontend</span>
-cd generic-explainability/frontend
+cd frontend
 npm install
 npm run dev</code></pre>
-        <p>DataRobot Codespaces will expose the forwarded port and provide a shareable URL. Share the frontend port URL with the customer.</p>
+        <p>DataRobot Codespaces will expose the forwarded ports and provide a shareable URL. Share the frontend port URL with the customer.</p>
         <div class="note">
           On first load the app runs the batch scoring pipeline against <code>SCORING_DATASET_ID</code>. This may take a minute depending on dataset size. Subsequent loads use the cached result.
         </div>

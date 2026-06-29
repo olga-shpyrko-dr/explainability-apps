@@ -59,9 +59,18 @@ export default function GroupExplanationChart({
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <p style={{ fontSize: 11, color: "#6C6A6B", margin: 0, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-          Based on top-{maxExplanations} explanations only — groups with diffuse signal may be underweighted.
-        </p>
+        {/* Legend */}
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <span style={legendItemStyle}>
+            <span style={{ ...legendDotStyle, background: "#5C41FF" }} />
+            {factorPositiveLabel}
+          </span>
+          <span style={legendItemStyle}>
+            <span style={{ ...legendDotStyle, background: "#81FBA5" }} />
+            {factorNegativeLabel}
+          </span>
+        </div>
+        {/* Direction filter */}
         <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 16 }}>
           {(["all", "positive", "negative"] as Direction[]).map((d) => (
             <button
@@ -77,11 +86,11 @@ export default function GroupExplanationChart({
                 borderColor: direction === d ? "#0B0B0B" : "#E4E4E4",
                 background:
                   direction === d
-                    ? d === "positive" ? "#909BF5" : d === "negative" ? "#81FBA5" : "#0B0B0B"
+                    ? d === "positive" ? "#5C41FF" : d === "negative" ? "#81FBA5" : "#0B0B0B"
                     : "#FFFFFF",
                 color:
                   direction === d
-                    ? d === "positive" ? "#0B0B0B" : d === "negative" ? "#0B0B0B" : "#81FBA5"
+                    ? d === "positive" ? "#FFFFFF" : d === "negative" ? "#0B0B0B" : "#81FBA5"
                     : "#6C6A6B",
               }}
             >
@@ -90,6 +99,9 @@ export default function GroupExplanationChart({
           ))}
         </div>
       </div>
+      <p style={{ fontSize: 11, color: "#6C6A6B", margin: "0 0 8px", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+        Based on top-{maxExplanations} explanations only — groups with diffuse signal may be underweighted.
+      </p>
 
       <ResponsiveContainer width="100%" height={Math.max(visibleGroups.length * 44 + 40, 60)}>
         <BarChart
@@ -129,7 +141,7 @@ export default function GroupExplanationChart({
             {visibleGroups.map((entry) => (
               <Cell
                 key={entry.feature_group}
-                fill={entry.sum_shap >= 0 ? "#909BF5" : "#81FBA5"}
+                fill={entry.sum_shap >= 0 ? "#5C41FF" : "#81FBA5"}
                 opacity={expanded && expanded !== entry.feature_group ? 0.4 : 1}
               />
             ))}
@@ -201,6 +213,21 @@ function FeatureDrillDown({
   );
 }
 
+const legendItemStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  fontSize: 12,
+  color: "#333",
+  fontFamily: "'DM Sans', system-ui, sans-serif",
+};
+const legendDotStyle: React.CSSProperties = {
+  display: "inline-block",
+  width: 10,
+  height: 10,
+  borderRadius: 2,
+  flexShrink: 0,
+};
 const placeholderStyle: React.CSSProperties = { padding: 24, color: "#6C6A6B", fontFamily: "'DM Sans', system-ui, sans-serif" };
 const tooltipStyle: React.CSSProperties = {
   background: "#FFFFFF",

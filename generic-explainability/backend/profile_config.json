@@ -40,7 +40,7 @@
       "column": "INSURANCE_TYPE",
       "display_name": "Insurance type",
       "filter_type": "multiselect",
-      "show_in_profile": true
+      "show_in_profile": false
     },
     {
       "column": "INCIDENT_SEVERITY",
@@ -54,7 +54,7 @@
     "display_name": "Fraud Probability Score"
   },
   "top_explanation_filter": {
-    "show": true,
+    "show": false,
     "display_name": "Top Explanation Feature",
     "explanation_slot": 1
   }
