@@ -223,7 +223,6 @@ def _get_or_create_batch_prediction_deployment(
         intake_settings={"type": "dataset", "datasetId": catalog_dataset_id},
         output_settings={"type": "dataset"},
         num_concurrent=4,
-        include_prediction_explanations=True,
         max_explanations=max_explanations,
         explanation_algorithm="shap",
     )
