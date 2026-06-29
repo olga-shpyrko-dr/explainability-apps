@@ -1,0 +1,10 @@
+.env
+.DS_Store
+__pycache__/
+*.py[cod]
+.prediction_dataset_cache.json
+data/scoring_sample.csv
+data/*.csv
+node_modules/
+dist/
+frontend/.vite/

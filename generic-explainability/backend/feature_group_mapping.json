@@ -1,0 +1,78 @@
+{
+  "groups": {
+    "Agent Behaviour": [
+      "AGENT_DENIAL_RATE",
+      "AGENT_DENIED_CLAIMS",
+      "AGENT_ID",
+      "AGENT_NAME",
+      "AGENT_AVG_CLAIM_AMOUNT",
+      "AGENT_TENURE_DAYS",
+      "AGENT_TOTAL_CLAIMS",
+      "AGENT_AVG_DAYS_TO_REPORT",
+      "AGENT_CITY",
+      "AGENT_STATE",
+      "AGENT_IN_INCIDENT_STATE",
+      "AGENT_DATE_OF_JOINING (Day of Week)",
+      "AGENT_DATE_OF_JOINING (Month)",
+      "AGENT_DATE_OF_JOINING (Day of Month)",
+      "AGENT_DATE_OF_JOINING (Year)"
+    ],
+    "Vendor Behaviour": [
+      "VENDOR_DENIAL_RATE",
+      "VENDOR_DENIED_CLAIMS",
+      "VENDOR_NAME",
+      "VENDOR_ID",
+      "VENDOR_STATE",
+      "VENDOR_CITY",
+      "VENDOR_TOTAL_CLAIMS",
+      "VENDOR_AVG_CLAIM_AMOUNT",
+      "VENDOR_MISSING",
+      "VENDOR_IN_INCIDENT_STATE"
+    ],
+    "Claim & Transaction Details": [
+      "CLAIM_DESCRIPTION",
+      "CLAIM_AMOUNT",
+      "CLAIM_TO_PREMIUM_RATIO",
+      "DAYS_TO_REPORT",
+      "POLICE_REPORT_AVAILABLE",
+      "AUTHORITY_CONTACTED",
+      "CLAIM_STATUS",
+      "TXN_DATE",
+      "TXN_DATE (Day of Week)",
+      "REPORT_DT",
+      "REPORT_DT (Day of Week)"
+    ],
+    "Incident Profile": [
+      "INCIDENT_SEVERITY",
+      "INCIDENT_STATE",
+      "INCIDENT_CITY",
+      "INCIDENT_HOUR_OF_THE_DAY",
+      "ANY_INJURY",
+      "IS_NIGHT_INCIDENT",
+      "INCIDENT_IN_HOME_STATE",
+      "LOSS_DT",
+      "LOSS_DT (Day of Week)"
+    ],
+    "Policy & Customer": [
+      "INSURANCE_TYPE",
+      "PREMIUM_AMOUNT",
+      "TENURE",
+      "POLICY_AGE_AT_LOSS_DAYS",
+      "RISK_SEGMENTATION",
+      "HOUSE_TYPE",
+      "POLICY_EFF_DT (Year)",
+      "POLICY_EFF_DT (Month)",
+      "POLICY_EFF_DT (Day of Month)",
+      "POLICY_EFF_DT (Day of Week)",
+      "AGE",
+      "MARITAL_STATUS",
+      "EMPLOYMENT_STATUS",
+      "SOCIAL_CLASS",
+      "NO_OF_FAMILY_MEMBERS",
+      "CUSTOMER_EDUCATION_LEVEL",
+      "CUSTOMER_CITY",
+      "CUSTOMER_STATE",
+      "CUSTOMER_POSTAL_CODE"
+    ]
+  }
+}

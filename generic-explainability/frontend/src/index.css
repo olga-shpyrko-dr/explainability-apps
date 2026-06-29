@@ -1,0 +1,46 @@
+/* DataRobot brand design tokens */
+:root {
+  /* Brand palette */
+  --dr-green:   #81FBA5;
+  --dr-black:   #0B0B0B;
+  --dr-grey:    #E4E4E4;
+  --dr-white:   #FFFFFF;
+  --dr-purple:  #909BF5;
+  --dr-indigo:  #5C41FF;
+  --dr-blue:    #44BFFC;
+  --dr-yellow:  #FFFF54;
+
+  /* Semantic tokens */
+  --color-bg:        #F5F5F5;
+  --color-surface:   #FFFFFF;
+  --color-border:    #E4E4E4;
+  --color-text:      #0B0B0B;
+  --color-text-muted:#6C6A6B;
+
+  /* Typography */
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  margin: 0;
+}

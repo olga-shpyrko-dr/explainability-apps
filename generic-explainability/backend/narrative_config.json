@@ -1,0 +1,14 @@
+{
+  "domain_description": "motor insurance claim fraud detection",
+  "entity_label": "claim",
+  "entity_label_plural": "claims",
+  "target_audience": "fraud investigator",
+  "high_score_label": "high fraud risk",
+  "low_score_label": "low fraud risk",
+  "factor_positive_label": "factor increasing fraud likelihood",
+  "factor_negative_label": "factor reducing fraud likelihood",
+  "outcome_label": "confirmed fraud rate",
+  "recommended_action_hint": "Prioritise manual review for claims with ...",
+  "custom_system_prompt": null,
+  "custom_user_template": null
+}

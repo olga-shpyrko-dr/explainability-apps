@@ -1,0 +1,61 @@
+{
+  "profile_attributes": [
+    {
+      "column": "CUSTOMER_CITY",
+      "display_name": "Customer city",
+      "filter_type": "multiselect",
+      "show_in_profile": true
+    },
+    {
+      "column": "AGE",
+      "display_name": "Age",
+      "filter_type": "range",
+      "show_in_profile": true
+    },
+    {
+      "column": "MARITAL_STATUS",
+      "display_name": "Marital status",
+      "filter_type": "multiselect",
+      "show_in_profile": true
+    },
+    {
+      "column": "EMPLOYMENT_STATUS",
+      "display_name": "Employment status",
+      "filter_type": "multiselect",
+      "show_in_profile": true
+    },
+    {
+      "column": "TENURE",
+      "display_name": "Tenure (months)",
+      "filter_type": "range",
+      "show_in_profile": true
+    },
+    {
+      "column": "RISK_SEGMENTATION",
+      "display_name": "Risk segment",
+      "filter_type": "multiselect",
+      "show_in_profile": true
+    },
+    {
+      "column": "INSURANCE_TYPE",
+      "display_name": "Insurance type",
+      "filter_type": "multiselect",
+      "show_in_profile": true
+    },
+    {
+      "column": "INCIDENT_SEVERITY",
+      "display_name": "Incident severity",
+      "filter_type": "multiselect",
+      "show_in_profile": true
+    }
+  ],
+  "score_filter": {
+    "show": true,
+    "display_name": "Fraud Probability Score"
+  },
+  "top_explanation_filter": {
+    "show": true,
+    "display_name": "Top Explanation Feature",
+    "explanation_slot": 1
+  }
+}

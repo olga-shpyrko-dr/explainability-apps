@@ -1,0 +1,525 @@
+<title>Deploying the Explainability App — DataRobot Codespaces</title>
+<meta name="description" content="Step-by-step guide for deploying the Generic Explainability App into a DataRobot Codespace for a customer environment.">
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green:   #81FBA5;
+    --black:   #0B0B0B;
+    --grey:    #E4E4E4;
+    --purple:  #909BF5;
+    --code-bg: #181A1B;
+    --code-fg: #D4D4D4;
+    --sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: 'Fragment Mono', 'Fira Mono', 'Cascadia Code', ui-monospace, monospace;
+  }
+
+  html { font-size: 16px; }
+
+  body {
+    font-family: var(--sans);
+    background: #FFFFFF;
+    color: var(--black);
+    line-height: 1.65;
+    padding: 0 24px 80px;
+  }
+
+  /* ── Page header ────────────────────────────────────────── */
+  .page-header {
+    max-width: 660px;
+    margin: 0 auto;
+    padding: 48px 0 40px;
+    border-bottom: 2px solid var(--black);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #666;
+    margin-bottom: 12px;
+  }
+
+  .page-header h1 {
+    font-size: clamp(22px, 4vw, 30px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    text-wrap: balance;
+    margin-bottom: 14px;
+  }
+
+  .page-header p {
+    font-size: 15px;
+    color: #444;
+    max-width: 540px;
+  }
+
+  /* ── Main column ────────────────────────────────────────── */
+  .content {
+    max-width: 660px;
+    margin: 0 auto;
+  }
+
+  /* ── Prerequisites card ─────────────────────────────────── */
+  .prereqs {
+    margin: 36px 0 0;
+    background: #F7F7F7;
+    border-left: 4px solid var(--green);
+    padding: 20px 24px;
+  }
+
+  .prereqs h2 {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 10px;
+  }
+
+  .prereqs ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .prereqs li {
+    font-size: 14px;
+    padding-left: 16px;
+    position: relative;
+    color: #222;
+  }
+
+  .prereqs li::before {
+    content: '▸';
+    position: absolute;
+    left: 0;
+    color: var(--green);
+    font-size: 12px;
+    top: 2px;
+  }
+
+  /* ── Steps ──────────────────────────────────────────────── */
+  .steps {
+    margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    gap: 0 20px;
+    padding: 32px 0;
+    border-bottom: 1px solid var(--grey);
+  }
+
+  .step:last-child { border-bottom: none; }
+
+  .step-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--black);
+    background: var(--green);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .step-body h2 {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+
+  .step-body p {
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 12px;
+  }
+
+  .step-body p:last-child { margin-bottom: 0; }
+
+  /* ── Code blocks ────────────────────────────────────────── */
+  pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    padding: 16px 18px;
+    overflow-x: auto;
+    margin: 12px 0;
+    border-radius: 2px;
+  }
+
+  code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: #F0F0F0;
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  .comment { color: #6A9955; }
+  .key     { color: #9CDCFE; }
+  .val     { color: #CE9178; }
+
+  /* ── Inline note ─────────────────────────────────────────── */
+  .note {
+    font-size: 13px;
+    color: #555;
+    border-left: 3px solid var(--purple);
+    padding: 10px 14px;
+    background: #F5F4FF;
+    margin: 12px 0;
+  }
+
+  /* ── Config table ────────────────────────────────────────── */
+  .config-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin: 14px 0;
+    overflow-x: auto;
+    display: block;
+  }
+
+  .config-table th {
+    background: var(--green);
+    color: var(--black);
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 8px 12px;
+    white-space: nowrap;
+  }
+
+  .config-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--grey);
+    vertical-align: top;
+  }
+
+  .config-table td:first-child {
+    font-family: var(--mono);
+    font-size: 12px;
+    white-space: nowrap;
+    color: #222;
+  }
+
+  .config-table tr:last-child td { border-bottom: none; }
+
+  .req {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #888;
+  }
+
+  /* ── Customisation section ───────────────────────────────── */
+  .custom-files {
+    margin: 14px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .custom-file {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 12px;
+    align-items: start;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--grey);
+    font-size: 13.5px;
+  }
+
+  .custom-file:last-child { border-bottom: none; }
+
+  .custom-file .fname {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: #222;
+  }
+
+  .custom-file .fdesc { color: #444; }
+
+  /* ── Tips ────────────────────────────────────────────────── */
+  .tips {
+    margin-top: 36px;
+    padding: 20px 24px;
+    border: 1.5px solid var(--grey);
+  }
+
+  .tips h2 {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 14px;
+  }
+
+  .tips ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .tips li {
+    font-size: 13.5px;
+    color: #333;
+    padding-left: 18px;
+    position: relative;
+  }
+
+  .tips li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: #999;
+  }
+
+  /* ── Footer ──────────────────────────────────────────────── */
+  .page-footer {
+    max-width: 660px;
+    margin: 48px auto 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--grey);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #999;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+</style>
+
+<div class="page-header">
+  <div class="eyebrow">DataRobot · Explainability Apps · Deployment Guide</div>
+  <h1>Deploying the Generic Explainability App to DataRobot Codespaces</h1>
+  <p>How to configure and launch the app in a customer DataRobot environment using a public GitHub repository.</p>
+</div>
+
+<div class="content">
+
+  <div class="prereqs">
+    <h2>Prerequisites</h2>
+    <ul>
+      <li>DataRobot account with Codespaces access enabled</li>
+      <li>DataRobot API token (from <strong>Developer Tools → API Keys</strong>)</li>
+      <li>A DataRobot deployment with SHAP explanations enabled (preferred), or a project + model ID</li>
+      <li>An AI Catalog scoring dataset ID (generate one using <code>create_scoring_sample.py</code> if needed)</li>
+      <li>GitHub account with access to the app repository</li>
+    </ul>
+  </div>
+
+  <div class="steps">
+
+    <!-- STEP 1 -->
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-body">
+        <h2>Fork the repository</h2>
+        <p>Fork the public app repository on GitHub so you can commit your domain configuration files without modifying the shared source.</p>
+        <pre><code><span class="comment"># Repository to fork</span>
+github.com/olga-shpyrko-dr/explainability-apps
+
+<span class="comment"># The generic app lives under:</span>
+generic-explainability/</code></pre>
+        <p>Keep <code>.env</code> out of version control — it is already in <code>.gitignore</code>. Domain config files (<code>narrative_config.json</code>, <code>profile_config.json</code>, <code>feature_group_mapping.json</code>) can and should be committed to the fork.</p>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-body">
+        <h2>Create a Codespace from the fork</h2>
+        <p>In DataRobot, navigate to <strong>Workbench → Codespaces → New Codespace</strong>. Connect your forked GitHub repository and select the branch you want to deploy.</p>
+        <p>Wait for the environment to initialise. Codespaces will install Python and Node dependencies defined in the repo automatically.</p>
+        <div class="note">
+          If Codespaces prompts for a devcontainer configuration, the repo includes one at <code>.devcontainer/devcontainer.json</code>. Accept it.
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-body">
+        <h2>Generate a scoring sample <span style="font-weight:400;color:#888;font-size:14px;">(first-time only)</span></h2>
+        <p>If the customer does not yet have a scored AI Catalog dataset with SHAP explanation columns, generate one from the model's holdout partition.</p>
+        <pre><code>cd generic-explainability/backend
+
+<span class="comment"># Uncomment PROJECT_ID and MODEL_ID in .env first, then:</span>
+python create_scoring_sample.py \
+  --upload \
+  --dataset-name "Customer — Holdout Scoring Sample" \
+  --use-case-id &lt;DEFAULT_USE_CASE_ID&gt;</code></pre>
+        <p>The script prints the new dataset ID. Copy it into <code>.env</code> as <code>SCORING_DATASET_ID</code>.</p>
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="step">
+      <div class="step-num">04</div>
+      <div class="step-body">
+        <h2>Configure the app</h2>
+        <p>Copy the template and fill in the values for this customer environment.</p>
+        <pre><code>cd generic-explainability/backend
+cp .env.template .env</code></pre>
+
+        <table class="config-table">
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Value</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>DATAROBOT_API_TOKEN</td>
+              <td>Customer DR API token</td>
+              <td class="req">required</td>
+            </tr>
+            <tr>
+              <td>DATAROBOT_ENDPOINT</td>
+              <td><code>https://app.eu.datarobot.com/api/v2</code> (adjust region)</td>
+              <td class="req">required</td>
+            </tr>
+            <tr>
+              <td>DEPLOYMENT_ID</td>
+              <td>Deployment with SHAP enabled — preferred path</td>
+              <td class="req">recommended</td>
+            </tr>
+            <tr>
+              <td>PROJECT_ID + MODEL_ID</td>
+              <td>Fallback if no deployment is available</td>
+              <td class="req">fallback</td>
+            </tr>
+            <tr>
+              <td>SCORING_DATASET_ID</td>
+              <td>AI Catalog dataset to score (from Step 3)</td>
+              <td class="req">required</td>
+            </tr>
+            <tr>
+              <td>ROW_ID_COL</td>
+              <td>Unique row identifier column name in the dataset</td>
+              <td class="req">required</td>
+            </tr>
+            <tr>
+              <td>OUTCOME_COL</td>
+              <td>Binary 0/1 outcome column (enables actual rate in narrative)</td>
+              <td class="req">optional</td>
+            </tr>
+            <tr>
+              <td>DEFAULT_USE_CASE_ID</td>
+              <td>Scopes the in-app dataset selector to one use case folder</td>
+              <td class="req">optional</td>
+            </tr>
+            <tr>
+              <td>DR_GATEWAY_MODEL</td>
+              <td><code>azure/gpt-4o-mini</code> — for AI narrative generation</td>
+              <td class="req">optional</td>
+            </tr>
+            <tr>
+              <td>APP_TITLE / APP_SUBTITLE</td>
+              <td>Displayed in the app header</td>
+              <td class="req">optional</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="step">
+      <div class="step-num">05</div>
+      <div class="step-body">
+        <h2>Customise domain configuration</h2>
+        <p>Edit the three JSON files in <code>backend/</code> to match the customer's use case. These can be committed to the fork.</p>
+        <div class="custom-files">
+          <div class="custom-file">
+            <span class="fname">narrative_config.json</span>
+            <span class="fdesc">Entity labels, score labels, recommended action hint, and optional custom LLM prompt overrides.</span>
+          </div>
+          <div class="custom-file">
+            <span class="fname">profile_config.json</span>
+            <span class="fdesc">Which columns appear in the cohort filter panel and individual profile view, plus score and explanation filter defaults.</span>
+          </div>
+          <div class="custom-file">
+            <span class="fname">feature_group_mapping.json</span>
+            <span class="fdesc">Maps model feature names to named business domain groups shown in the Group Explanations chart.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 6 -->
+    <div class="step">
+      <div class="step-num">06</div>
+      <div class="step-body">
+        <h2>Launch the app</h2>
+        <p>Start the backend and frontend in two terminal tabs within the Codespace.</p>
+        <pre><code><span class="comment"># Terminal 1 — FastAPI backend</span>
+cd generic-explainability/backend
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload</code></pre>
+        <pre><code><span class="comment"># Terminal 2 — React frontend</span>
+cd generic-explainability/frontend
+npm install
+npm run dev</code></pre>
+        <p>DataRobot Codespaces will expose the forwarded port and provide a shareable URL. Share the frontend port URL with the customer.</p>
+        <div class="note">
+          On first load the app runs the batch scoring pipeline against <code>SCORING_DATASET_ID</code>. This may take a minute depending on dataset size. Subsequent loads use the cached result.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /steps -->
+
+  <div class="tips">
+    <h2>Operational notes</h2>
+    <ul>
+      <li>The scoring cache is stored as <code>backend/.prediction_dataset_cache.json</code>. Delete it to force a fresh scoring run.</li>
+      <li><code>DEPLOYMENT_ID</code> takes priority over <code>PROJECT_ID + MODEL_ID</code> — only set one path in <code>.env</code> to avoid ambiguity.</li>
+      <li>The AI narrative requires an LLM provider. Set <code>DR_GATEWAY_MODEL=azure/gpt-4o-mini</code> for DR SaaS environments. Alternatively configure <code>DR_LLM_DEPLOYMENT_ID</code> or a direct Anthropic/Azure key.</li>
+      <li>Keep <code>.env</code> out of git. Rotate the customer's API token after the demo if it was shared with you.</li>
+      <li>To switch the active dataset mid-session without restarting, use the dataset selector in the app's cohort panel — it calls <code>POST /api/dataset/switch</code> on the backend.</li>
+    </ul>
+  </div>
+
+</div><!-- /content -->
+
+<div class="page-footer">
+  <span>© 2026 DataRobot, Inc. — Confidential</span>
+  <span>Generic Explainability App · Deployment Guide</span>
+</div>
