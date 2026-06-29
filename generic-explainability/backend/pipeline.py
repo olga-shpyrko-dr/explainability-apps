@@ -220,7 +220,7 @@ def _get_or_create_batch_prediction_deployment(
 
     job = dr.BatchPredictionJob.score(
         deployment=deployment_id,
-        intake_settings={"type": "dataset", "datasetId": catalog_dataset_id},
+        intake_settings={"type": "dataset", "dataset": catalog_dataset_id},
         output_settings={"type": "dataset"},
         num_concurrent=4,
         max_explanations=max_explanations,
