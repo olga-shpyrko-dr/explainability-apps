@@ -195,23 +195,27 @@ def _get_or_create_batch_prediction_deployment(
     deployment_id: str,
     catalog_dataset_id: str,
     max_explanations: int,
-) -> str:
+) -> pd.DataFrame:
     """
     Run a batch prediction job using a DataRobot deployment and return the
-    AI Catalog output dataset ID.  Result is cached so restarts are fast.
+    scored output as a DataFrame.  Result is cached to a local CSV so restarts
+    are fast without re-running scoring.
 
     The deployment must have SHAP prediction explanations enabled.
     """
     import datarobot as dr  # type: ignore
 
+    # Cache key: local CSV file alongside the cache JSON
     cache = _read_cache()
+    local_csv = _CACHE_FILE.parent / ".batch_output_cache.csv"
     if (
         cache.get("mode") == "deployment"
         and cache.get("deployment_id") == deployment_id
         and cache.get("catalog_dataset_id") == catalog_dataset_id
+        and local_csv.exists()
     ):
-        logger.info("Using cached deployment batch prediction output %s", cache["output_dataset_id"])
-        return cache["output_dataset_id"]
+        logger.info("Using cached batch prediction output from %s", local_csv)
+        return pd.read_csv(local_csv)
 
     logger.info(
         "Running deployment batch prediction job (deployment=%s, dataset=%s)…",
@@ -220,35 +224,29 @@ def _get_or_create_batch_prediction_deployment(
 
     job = dr.BatchPredictionJob.score(
         deployment=deployment_id,
-        intake_settings={"type": "dataset", "dataset": catalog_dataset_id},
-        output_settings={"type": "dataset"},
+        intake_settings={
+            "type": "dataset",
+            "dataset": dr.Dataset.get(catalog_dataset_id),
+        },
+        output_settings={"type": "localFile", "path": str(local_csv)},
         num_concurrent=4,
         max_explanations=max_explanations,
         explanation_algorithm="shap",
     )
-    job.wait_for_completion(timeout=3600)
+    job.wait_for_completion()
 
-    # Retrieve the output dataset ID from the completed job via REST
-    client = dr.client.get_client()
-    job_data = client.get(f"batchPredictions/{job.id}/").json()
-    output_dataset_id = (
-        job_data.get("outputSettings", {}).get("datasetId")
-        or job_data.get("links", {}).get("outputDatasetId")
-    )
-    if not output_dataset_id:
+    if not local_csv.exists():
         raise RuntimeError(
-            f"Cannot determine output dataset ID from batch prediction job {job.id}. "
-            f"Job response: {job_data}"
+            f"Batch prediction job {job.id} completed but output file not found at {local_csv}"
         )
 
     _write_cache({
         "mode": "deployment",
         "deployment_id": deployment_id,
         "catalog_dataset_id": catalog_dataset_id,
-        "output_dataset_id": output_dataset_id,
     })
-    logger.info("Batch prediction job complete — output dataset %s", output_dataset_id)
-    return output_dataset_id
+    logger.info("Batch prediction job complete — output written to %s", local_csv)
+    return pd.read_csv(local_csv)
 
 
 def build_tables_from_deployment(
@@ -275,35 +273,43 @@ def build_tables_from_deployment(
 
     group_map = load_group_map()
 
-    output_dataset_id = _get_or_create_batch_prediction_deployment(
+    output_df = _get_or_create_batch_prediction_deployment(
         deployment_id=deployment_id,
         catalog_dataset_id=scoring_dataset_id,
         max_explanations=max_explanations,
     )
-
-    logger.info("Loading batch prediction output dataset %s…", output_dataset_id)
-    output_df = Dataset.get(output_dataset_id).get_as_dataframe()
+    logger.info("Batch output loaded: %s rows × %s cols", *output_df.shape)
 
     logger.info("Loading original scoring dataset %s for profile attributes…", scoring_dataset_id)
     scoring_df = Dataset.get(scoring_dataset_id).get_as_dataframe()
 
-    for label, df in [("output", output_df), ("scoring", scoring_df)]:
-        if row_id_col not in df.columns:
-            logger.warning("row_id_col '%s' not in %s dataset; using index", row_id_col, label)
-            df[row_id_col] = df.index.astype(str)
-
-    # Merge prediction + explanation columns from output_df into the richer scoring_df
-    merge_cols = [row_id_col] + [
+    # Columns to pull from the batch output
+    pred_expl_cols = [
         c for c in output_df.columns
         if c.upper().endswith("_PREDICTION") or "EXPLANATION_" in c.upper()
     ]
-    merge_cols = [c for c in dict.fromkeys(merge_cols) if c in output_df.columns]
 
-    scored_population = scoring_df.merge(
-        output_df[merge_cols].drop_duplicates(subset=[row_id_col]),
-        on=row_id_col,
-        how="left",
-    )
+    if row_id_col in output_df.columns:
+        # Merge by ID when the row identifier is present in the output
+        merge_cols = [row_id_col] + pred_expl_cols
+        scored_population = scoring_df.merge(
+            output_df[merge_cols].drop_duplicates(subset=[row_id_col]),
+            on=row_id_col,
+            how="left",
+        )
+    else:
+        # localFile output omits input columns — join positionally (batch preserves row order)
+        logger.info(
+            "row_id_col '%s' absent from batch output; joining by row position", row_id_col
+        )
+        scored_population = scoring_df.reset_index(drop=True).copy()
+        if len(output_df) != len(scored_population):
+            raise RuntimeError(
+                f"Batch output row count ({len(output_df)}) != "
+                f"scoring dataset row count ({len(scored_population)}); cannot join."
+            )
+        for col in pred_expl_cols:
+            scored_population[col] = output_df[col].values
 
     prediction_col = resolve_prediction_col(scored_population, prediction_col_cfg)
     logger.info("Using prediction column: '%s'", prediction_col)
