@@ -193,6 +193,40 @@
     margin: 12px 0;
   }
 
+  /* ── Section divider ────────────────────────────────────── */
+  .section-divider {
+    max-width: 660px;
+    margin: 56px auto 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .section-divider::before,
+  .section-divider::after {
+    content: '';
+    flex: 1;
+    height: 2px;
+    background: var(--black);
+  }
+
+  .section-divider-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #555;
+    white-space: nowrap;
+  }
+
+  .section-intro {
+    max-width: 660px;
+    margin: 20px auto 0;
+    font-size: 14px;
+    color: #444;
+    line-height: 1.65;
+  }
+
   /* ── Config table ────────────────────────────────────────── */
   .config-table {
     width: 100%;
@@ -491,12 +525,93 @@ npm run dev</code></pre>
 
   </div><!-- /steps -->
 
+  <!-- ═══════════════════════════════════════════════════════
+       CUSTOM APP DEPLOYMENT
+  ════════════════════════════════════════════════════════════ -->
+  <div class="section-divider">
+    <div class="section-divider-label">Alternative: Deploy as a DataRobot Custom Application</div>
+  </div>
+
+  <p class="section-intro">
+    For a persistent, shareable URL that lives inside DataRobot (not tied to a Codespace session),
+    deploy the app as a <strong>Custom Application</strong> using the DataRobot App Framework.
+    Steps 1–4 above (dataset, config, domain JSON) still apply — this section only covers the deployment step.
+  </p>
+
+  <div class="steps">
+
+    <!-- CA STEP 1 -->
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-body">
+        <h2>Install prerequisites <span style="font-weight:400;color:#888;font-size:14px;">(once per machine)</span></h2>
+        <pre><code>pip install datarobot-cli
+curl -LsSf https://astral.sh/uv/install.sh | sh
+dr auth set-url &amp;&amp; dr auth login</code></pre>
+        <p><code>dr auth set-url</code> points the CLI at your DataRobot instance (e.g. <code>https://app.eu.datarobot.com</code>). <code>dr auth login</code> stores your API token.</p>
+      </div>
+    </div>
+
+    <!-- CA STEP 2 -->
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-body">
+        <h2>Scaffold the App Framework base into the existing repo</h2>
+        <p>The repo already has <code>start-app.sh</code>, <code>backend/</code>, and <code>frontend/</code>. The AF base layer adds the infrastructure manifest needed for <code>dr run deploy</code> — it will not overwrite existing files.</p>
+        <pre><code>cd explainability-apps/generic-explainability
+uvx copier copy https://github.com/datarobot/af-component-base .</code></pre>
+        <p>When prompted, use <strong><code>explainability-app</code></strong> as the recipe name. Accept defaults for all other prompts.</p>
+      </div>
+    </div>
+
+    <!-- CA STEP 3 -->
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-body">
+        <h2>Configure environment variables</h2>
+        <p>Instead of manually editing <code>.env</code>, the AF CLI maps variables to DataRobot's secret management:</p>
+        <pre><code>dr dotenv setup</code></pre>
+        <p>Supply the same values as the <code>.env</code> table in Step 3 of the Codespace guide above (<code>DATAROBOT_API_TOKEN</code>, <code>SCORING_DATASET_ID</code>, <code>DEPLOYMENT_ID</code>, <code>ROW_ID_COL</code>, <code>DR_GATEWAY_MODEL</code>, etc.).</p>
+        <div class="note">
+          <code>DR_GATEWAY_MODEL</code> should be set to <code>azure/gpt-5-1-2025-11-13</code> for the structured AI narrative to work correctly.
+        </div>
+      </div>
+    </div>
+
+    <!-- CA STEP 4 -->
+    <div class="step">
+      <div class="step-num">04</div>
+      <div class="step-body">
+        <h2>Deploy</h2>
+        <pre><code>dr run deploy</code></pre>
+        <p>The CLI creates the Custom Application in DataRobot, builds the container, and outputs the shareable URL. The <code>start-app.sh</code> entry point (already in the repo) builds the React frontend and starts the FastAPI backend on port 8080 automatically.</p>
+        <div class="note">
+          On first load the app scores <code>SCORING_DATASET_ID</code> via batch prediction — this may take a minute. Subsequent loads use the cached result.
+        </div>
+      </div>
+    </div>
+
+    <!-- CA STEP 5 -->
+    <div class="step">
+      <div class="step-num">05</div>
+      <div class="step-body">
+        <h2>Redeploy after changes</h2>
+        <p>Pull the latest code and redeploy in one command:</p>
+        <pre><code>git pull
+dr run deploy</code></pre>
+        <p>To tear down the Custom Application:</p>
+        <pre><code>dr run infra:down</code></pre>
+      </div>
+    </div>
+
+  </div><!-- /custom app steps -->
+
   <div class="tips">
     <h2>Operational notes</h2>
     <ul>
       <li>The scoring cache is stored as <code>backend/.prediction_dataset_cache.json</code>. Delete it to force a fresh scoring run.</li>
       <li><code>DEPLOYMENT_ID</code> takes priority over <code>PROJECT_ID + MODEL_ID</code> — only set one path in <code>.env</code> to avoid ambiguity.</li>
-      <li>The AI narrative requires an LLM provider. Set <code>DR_GATEWAY_MODEL=azure/gpt-4o-mini</code> for DR SaaS environments. Alternatively configure <code>DR_LLM_DEPLOYMENT_ID</code> or a direct Anthropic/Azure key.</li>
+      <li>The AI narrative requires an LLM provider. Set <code>DR_GATEWAY_MODEL=azure/gpt-5-1-2025-11-13</code> for DR SaaS environments. Alternatively configure <code>DR_LLM_DEPLOYMENT_ID</code> or a direct Anthropic/Azure key.</li>
       <li>Keep <code>.env</code> out of git. Rotate the customer's API token after the demo if it was shared with you.</li>
       <li>To switch the active dataset mid-session without restarting, use the dataset selector in the app's cohort panel — it calls <code>POST /api/dataset/switch</code> on the backend.</li>
     </ul>
