@@ -196,7 +196,7 @@ function App() {
                   placeholder={`Enter ${appConfig?.row_id_col ?? "ID"}…`}
                   style={inputStyle}
                 />
-                <button onClick={lookupRow} style={primaryBtn}>Look up</button>
+                <button onClick={() => lookupRow()} style={primaryBtn}>Look up</button>
               </div>
               {profile?.sample_row_ids && profile.sample_row_ids.length > 0 && (
                 <div style={{ marginBottom: 16 }}>

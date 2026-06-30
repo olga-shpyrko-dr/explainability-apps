@@ -134,8 +134,9 @@ export default function GroupExplanationChart({
             dataKey="avg_abs_shap"
             radius={[0, 3, 3, 0]}
             cursor="pointer"
-            onClick={(data: GroupStat) => {
-              setExpanded(expanded === data.feature_group ? null : data.feature_group);
+            onClick={(data) => {
+              const g = data as unknown as GroupStat;
+              setExpanded(expanded === g.feature_group ? null : g.feature_group);
             }}
           >
             {visibleGroups.map((entry) => (

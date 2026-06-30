@@ -37,7 +37,7 @@ export default function CohortFilter({ appConfig, filters, onChange }: Props) {
     return <div style={{ color: "#888", fontSize: 13 }}>Loading filters…</div>;
   }
 
-  const { profile_attributes, score_filter, top_explanation_filter, prediction_col, max_explanations } = appConfig;
+  const { profile_attributes, score_filter, top_explanation_filter, prediction_col } = appConfig;
 
   // The top explanation column name derived from config
   const topFeatureCol = `EXPLANATION_${top_explanation_filter.explanation_slot}_FEATURE_NAME`;
