@@ -53,11 +53,17 @@ export default function DatasetSelector({ currentDatasetId, currentDatasetName, 
           try {
             const h = await fetchHealth();
             if (h.status === "ok") {
-              onSwitch(selectedId, displayName || selectedName);
-              setOpen(false);
-              setSelectedId(null);
-              setDisplayName("");
-              setSearch("");
+              if (h.switch_error) {
+                // Scoring failed but previous dataset was restored — let user pick again
+                setError(h.switch_error);
+                setSelectedId(null);
+              } else {
+                onSwitch(selectedId, displayName || selectedName);
+                setOpen(false);
+                setSelectedId(null);
+                setDisplayName("");
+                setSearch("");
+              }
               break;
             }
             if (h.status === "error") {

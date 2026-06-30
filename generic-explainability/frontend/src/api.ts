@@ -163,7 +163,7 @@ export const switchDataset = (dataset_id: string, display_name?: string) =>
     .then((r) => r.data);
 
 export const fetchHealth = () =>
-  api.get<{ status: string; detail?: string }>("api/health").then((r) => r.data);
+  api.get<{ status: string; detail?: string; switch_error?: string | null }>("api/health").then((r) => r.data);
 
 export const postNarrative = (
   filters: Record<string, unknown>,

@@ -287,8 +287,15 @@ async def switch_dataset(req: DatasetSwitchRequest):
             detail="Dataset has no explanation columns and no DEPLOYMENT_ID is configured for on-demand scoring.",
         )
 
+    # Snapshot current working state so we can restore it if scoring fails
+    _prev = {k: _state[k] for k in [
+        "scored_population", "explanation_long", "prediction_col",
+        "current_dataset_id", "current_dataset_name",
+    ] if k in _state}
+
     _state["ready"] = False
     _state.pop("init_error", None)
+    _state.pop("switch_error", None)
 
     async def _score_and_switch() -> None:
         try:
@@ -316,7 +323,10 @@ async def switch_dataset(req: DatasetSwitchRequest):
             logger.info("Dataset switch complete (scored) → %s (%d rows)", dataset_name, len(scored_pop))
         except Exception as exc:
             logger.error("Dataset switch failed: %s", exc, exc_info=True)
-            _state["init_error"] = str(exc)
+            # Restore previous working state so the app stays usable
+            _state.update(_prev)
+            _state["ready"] = True
+            _state["switch_error"] = str(exc)
 
     asyncio.create_task(_score_and_switch())
     logger.info("Dataset switch started (batch prediction) for %s", req.dataset_id)
@@ -344,6 +354,7 @@ def health():
         "explanation_rows": len(expl),
         "prediction_col": _state.get("prediction_col"),
         "sample_row_ids": pop[_row_id_col()].dropna().astype(str).unique()[:5].tolist(),
+        "switch_error": _state.get("switch_error"),
     }
 
 
