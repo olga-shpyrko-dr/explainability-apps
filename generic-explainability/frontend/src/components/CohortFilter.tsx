@@ -46,7 +46,7 @@ export default function CohortFilter({ appConfig, filters, onChange }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h3 style={{ margin: 0, fontFamily: "'Fragment Mono', monospace", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#6C6A6B", fontWeight: 400 }}>Filters</h3>
+        <h3 style={{ margin: 0, fontFamily: "'Fragment Mono', monospace", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5C41FF", fontWeight: 400 }}>Filters</h3>
         {activeCount > 0 && (
           <button onClick={clearAll} style={btnStyle}>
             Clear all ({activeCount})
@@ -260,7 +260,7 @@ const sectionLabel: React.CSSProperties = {
   fontFamily: "'Fragment Mono', monospace",
   fontSize: 9,
   letterSpacing: "0.08em",
-  color: "#6C6A6B",
+  color: "#5C41FF",
   textTransform: "uppercase",
   paddingTop: 10,
   borderTop: "1px solid #E4E4E4",

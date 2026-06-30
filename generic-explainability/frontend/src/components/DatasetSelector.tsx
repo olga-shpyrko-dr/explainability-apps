@@ -145,7 +145,7 @@ const eyebrowStyle: React.CSSProperties = {
   fontSize: 9,
   textTransform: "uppercase",
   letterSpacing: "0.08em",
-  color: "#6C6A6B",
+  color: "#5C41FF",
   marginBottom: 4,
 };
 const datasetNameStyle: React.CSSProperties = {
