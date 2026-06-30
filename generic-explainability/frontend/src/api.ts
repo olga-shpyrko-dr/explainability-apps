@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const BASE = import.meta.env.VITE_API_URL ?? "";
+// In production (behind DR reverse proxy) BASE_URL is "./" so all requests
+// are sent relative to the app's sub-path, not the domain root.
+const BASE = import.meta.env.VITE_API_URL ?? import.meta.env.BASE_URL;
 
 export const api = axios.create({ baseURL: BASE });
 
@@ -45,7 +47,7 @@ export interface DatasetInfo {
 }
 
 export const fetchAppConfig = () =>
-  api.get<AppConfig>("/api/config").then((r) => r.data);
+  api.get<AppConfig>("api/config").then((r) => r.data);
 
 // ---------------------------------------------------------------------------
 // Cohort and explanation types
@@ -121,33 +123,33 @@ export interface LLMProvidersResponse {
 
 export const fetchCohort = (filters: Record<string, unknown>) =>
   api
-    .get<CohortProfile>("/api/cohort", { params: { filters: JSON.stringify(filters) } })
+    .get<CohortProfile>("api/cohort", { params: { filters: JSON.stringify(filters) } })
     .then((r) => r.data);
 
 export const fetchGroups = (filters: Record<string, unknown>) =>
   api
-    .get<{ n_rows: number; groups: GroupStat[] }>("/api/groups", {
+    .get<{ n_rows: number; groups: GroupStat[] }>("api/groups", {
       params: { filters: JSON.stringify(filters) },
     })
     .then((r) => r.data);
 
 export const fetchRow = (rowId: string) =>
-  api.get<RowExplanation>(`/api/row/${rowId}`).then((r) => r.data);
+  api.get<RowExplanation>(`api/row/${rowId}`).then((r) => r.data);
 
 export const fetchColumns = () =>
-  api.get<{ columns: ColumnMeta[] }>("/api/columns").then((r) => r.data.columns);
+  api.get<{ columns: ColumnMeta[] }>("api/columns").then((r) => r.data.columns);
 
 export const fetchLLMProviders = () =>
-  api.get<LLMProvidersResponse>("/api/llm/providers").then((r) => r.data);
+  api.get<LLMProvidersResponse>("api/llm/providers").then((r) => r.data);
 
 export const fetchDatasets = () =>
   api
-    .get<{ datasets: DatasetInfo[]; use_case_mode: boolean }>("/api/datasets")
+    .get<{ datasets: DatasetInfo[]; use_case_mode: boolean }>("api/datasets")
     .then((r) => r.data);
 
 export const switchDataset = (dataset_id: string, display_name?: string) =>
   api
-    .post<{ dataset_id: string; dataset_name: string; rows_loaded: number }>("/api/dataset/switch", {
+    .post<{ dataset_id: string; dataset_name: string; rows_loaded: number }>("api/dataset/switch", {
       dataset_id,
       display_name: display_name || null,
     })
@@ -160,7 +162,7 @@ export const postNarrative = (
   provider?: string,
 ) =>
   api
-    .post<{ narrative: string; provider_used: string; disclaimer: string }>("/api/narrative", {
+    .post<{ narrative: string; provider_used: string; disclaimer: string }>("api/narrative", {
       filters,
       custom_instruction: customInstruction,
       include_outcome_rate: includeOutcomeRate,
@@ -174,7 +176,7 @@ export const postRowNarrative = (
   provider?: string,
 ) =>
   api
-    .post<{ narrative: string; provider_used: string; disclaimer: string }>("/api/narrative/row", {
+    .post<{ narrative: string; provider_used: string; disclaimer: string }>("api/narrative/row", {
       row_id: rowId,
       custom_instruction: customInstruction,
       provider: provider ?? null,

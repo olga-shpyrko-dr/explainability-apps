@@ -35,9 +35,20 @@ function App() {
   const [rowError, setRowError] = useState("");
 
   useEffect(() => {
-    fetchAppConfig()
-      .then(setAppConfig)
-      .catch((e) => console.error("Failed to load /api/config:", e));
+    let cancelled = false;
+    const poll = async () => {
+      while (!cancelled) {
+        try {
+          const cfg = await fetchAppConfig();
+          if (!cancelled) setAppConfig(cfg);
+          return;
+        } catch {
+          if (!cancelled) await new Promise((r) => setTimeout(r, 4000));
+        }
+      }
+    };
+    poll();
+    return () => { cancelled = true; };
   }, []);
 
   const refresh = useCallback(async () => {
@@ -107,7 +118,7 @@ function App() {
       {/* Header */}
       <header style={headerStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <img src="/datarobot-logo.svg" alt="DataRobot" style={{ height: 28 }} />
+          <img src={`${import.meta.env.BASE_URL}datarobot-logo.svg`} alt="DataRobot" style={{ height: 28 }} />
           <div style={{ width: 1, height: 28, background: "#3a3a3a" }} />
           <div>
             <div style={{ fontSize: 15, fontWeight: 500, color: C.white, lineHeight: 1.2 }}>{title}</div>
