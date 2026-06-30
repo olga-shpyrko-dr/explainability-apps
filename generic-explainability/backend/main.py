@@ -20,6 +20,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -54,54 +55,65 @@ _state: dict[str, Any] = {}
 async def lifespan(app: FastAPI):
     cfg = get_settings()
 
-    # Load JSON configs (fail fast on bad config)
+    # Load JSON configs synchronously (fast, fail-fast on bad config)
     profile_cfg = load_profile_config()
     narrative_cfg = load_narrative_config()
 
-    logger.info("Building data tables (mode=%s)…", cfg.data_source)
-    scored_pop, expl_long, prediction_col = build_tables(cfg)
-
-    validate_columns_against_profile(list(scored_pop.columns), profile_cfg)
-
-    # Resolve default dataset display name
-    default_dataset_name: Optional[str] = cfg.dataset_display_name
-    if not default_dataset_name and cfg.data_source == "datarobot" and cfg.scoring_dataset_id:
-        try:
-            default_dataset_name = get_dataset_name(cfg.scoring_dataset_id)
-        except Exception:
-            default_dataset_name = cfg.scoring_dataset_id
-
+    # Populate config-derived state immediately so the app is ready to accept
+    # health-check requests before the (potentially slow) data load completes.
     _state.update({
-        "scored_population": scored_pop,
-        "explanation_long": expl_long,
-        "row_id_col": cfg.row_id_col,
-        "prediction_col": prediction_col,
-        "outcome_col": cfg.outcome_col,
+        "ready": False,
         "profile_cfg": profile_cfg,
         "narrative_cfg": narrative_cfg,
-        # Tuning params passed to cohort/narrative functions
+        "cfg": cfg,
+        "row_id_col": cfg.row_id_col,
+        "outcome_col": cfg.outcome_col,
+        "app_title": cfg.app_title,
+        "app_subtitle": cfg.app_subtitle,
+        "max_explanations": cfg.max_explanations,
         "score_histogram_bins": cfg.score_histogram_bins,
         "top_features_per_group": cfg.top_features_per_group,
         "cohort_warning_min_rows": cfg.cohort_warning_min_rows,
         "narrative_max_tokens": cfg.narrative_max_tokens,
         "narrative_groups_in_prompt": cfg.narrative_groups_in_prompt,
         "narrative_features_per_group": cfg.narrative_features_per_group,
-        # App metadata
-        "app_title": cfg.app_title,
-        "app_subtitle": cfg.app_subtitle,
-        "max_explanations": cfg.max_explanations,
-        # Dataset selector state
         "data_source": cfg.data_source,
-        "current_dataset_id": cfg.scoring_dataset_id,
-        "current_dataset_name": default_dataset_name,
         "default_use_case_id": cfg.default_use_case_id,
-        "cfg": cfg,
     })
 
-    logger.info(
-        "Ready. scored_population=%s  explanation_long=%s  prediction_col=%s",
-        scored_pop.shape, expl_long.shape, prediction_col,
-    )
+    async def _load_data() -> None:
+        try:
+            logger.info("Building data tables (mode=%s)…", cfg.data_source)
+            loop = asyncio.get_running_loop()
+            scored_pop, expl_long, prediction_col = await loop.run_in_executor(
+                None, lambda: build_tables(cfg)
+            )
+            validate_columns_against_profile(list(scored_pop.columns), profile_cfg)
+
+            default_dataset_name: Optional[str] = cfg.dataset_display_name
+            if not default_dataset_name and cfg.data_source == "datarobot" and cfg.scoring_dataset_id:
+                try:
+                    default_dataset_name = get_dataset_name(cfg.scoring_dataset_id)
+                except Exception:
+                    default_dataset_name = cfg.scoring_dataset_id
+
+            _state.update({
+                "scored_population": scored_pop,
+                "explanation_long": expl_long,
+                "prediction_col": prediction_col,
+                "current_dataset_id": cfg.scoring_dataset_id,
+                "current_dataset_name": default_dataset_name,
+                "ready": True,
+            })
+            logger.info(
+                "Ready. scored_population=%s  explanation_long=%s  prediction_col=%s",
+                scored_pop.shape, expl_long.shape, prediction_col,
+            )
+        except Exception as exc:
+            logger.error("Data loading failed: %s", exc, exc_info=True)
+            _state["init_error"] = str(exc)
+
+    asyncio.create_task(_load_data())
     yield
     _state.clear()
 
@@ -120,11 +132,21 @@ app.add_middleware(
 # Shared helpers
 # ---------------------------------------------------------------------------
 
+def _require_ready() -> None:
+    if not _state.get("ready"):
+        err = _state.get("init_error")
+        if err:
+            raise HTTPException(status_code=503, detail=f"Data loading failed: {err}")
+        raise HTTPException(status_code=503, detail="Data is loading, please try again in a moment.")
+
+
 def _pop() -> pd.DataFrame:
+    _require_ready()
     return _state["scored_population"]
 
 
 def _expl() -> pd.DataFrame:
+    _require_ready()
     return _state["explanation_long"]
 
 
@@ -133,6 +155,7 @@ def _row_id_col() -> str:
 
 
 def _prediction_col() -> str:
+    _require_ready()
     return _state["prediction_col"]
 
 
@@ -220,6 +243,7 @@ def switch_dataset(req: DatasetSwitchRequest):
     Load a pre-scored catalog dataset and replace the active data in memory.
     The selected dataset must already contain EXPLANATION_N_* columns.
     """
+    _require_ready()
     if _state.get("data_source") != "datarobot":
         raise HTTPException(status_code=400, detail="Dataset switching is only available in DataRobot mode.")
 
@@ -261,17 +285,21 @@ def switch_dataset(req: DatasetSwitchRequest):
 
 @app.get("/api/health")
 def health():
-    pop = _state.get("scored_population")
-    expl = _state.get("explanation_long")
+    if not _state.get("ready"):
+        return {
+            "status": "error" if _state.get("init_error") else "loading",
+            "detail": _state.get("init_error"),
+            "rows_loaded": 0,
+            "explanation_rows": 0,
+        }
+    pop = _state["scored_population"]
+    expl = _state["explanation_long"]
     return {
         "status": "ok",
-        "rows_loaded": len(pop) if pop is not None else 0,
-        "explanation_rows": len(expl) if expl is not None else 0,
+        "rows_loaded": len(pop),
+        "explanation_rows": len(expl),
         "prediction_col": _state.get("prediction_col"),
-        "sample_row_ids": (
-            pop[_row_id_col()].dropna().astype(str).unique()[:5].tolist()
-            if pop is not None else []
-        ),
+        "sample_row_ids": pop[_row_id_col()].dropna().astype(str).unique()[:5].tolist(),
     }
 
 
