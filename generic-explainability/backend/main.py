@@ -515,6 +515,16 @@ _DIST = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 if os.path.isdir(_DIST):
     app.mount("/assets", StaticFiles(directory=os.path.join(_DIST, "assets")), name="assets")
 
+    # Serve public root files (logo etc.) that sit outside the /assets/ bundle
+    for _fname in os.listdir(_DIST):
+        _fpath = os.path.join(_DIST, _fname)
+        if os.path.isfile(_fpath) and _fname != "index.html":
+            app.add_api_route(
+                f"/{_fname}",
+                (lambda p=_fpath: (lambda: FileResponse(p)))(),
+                include_in_schema=False,
+            )
+
     @app.get("/{full_path:path}", include_in_schema=False)
     async def _spa_fallback(full_path: str):
         return FileResponse(os.path.join(_DIST, "index.html"))
