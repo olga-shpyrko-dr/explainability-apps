@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Optional
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 
@@ -44,9 +45,14 @@ class Settings(BaseSettings):
     dataset_display_name: Optional[str] = None  # overrides dr.Dataset.name in the UI
 
     # ------------------------------------------------------------------
-    # DataRobot Use Case — scopes the dataset selector in the UI
+    # DataRobot Use Case — scopes the dataset selector in the UI.
+    # Accepts DEFAULT_USE_CASE_ID (explicit) or the DATAROBOT_USE_CASE_ID
+    # that DR injects into Custom Application containers automatically.
     # ------------------------------------------------------------------
-    default_use_case_id: Optional[str] = None
+    default_use_case_id: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("DEFAULT_USE_CASE_ID", "DATAROBOT_USE_CASE_ID"),
+    )
 
     # ------------------------------------------------------------------
     # Tuning parameters

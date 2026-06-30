@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import drLogoUrl from "./assets/datarobot-logo.svg";
 import type { AppConfig, CohortProfile, GroupStat, RowExplanation } from "./api";
 import { fetchAppConfig, fetchCohort, fetchGroups, fetchRow } from "./api";
 import CohortFilter from "./components/CohortFilter";
@@ -118,7 +119,7 @@ function App() {
       {/* Header */}
       <header style={headerStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <img src={`${import.meta.env.BASE_URL}datarobot-logo.svg`} alt="DataRobot" style={{ height: 28 }} />
+          <img src={drLogoUrl} alt="DataRobot" style={{ height: 28 }} />
           <div style={{ width: 1, height: 28, background: "#3a3a3a" }} />
           <div>
             <div style={{ fontSize: 15, fontWeight: 500, color: C.white, lineHeight: 1.2 }}>{title}</div>
