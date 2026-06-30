@@ -43,7 +43,7 @@ from config_loader import (
 from cohort import apply_filters, cohort_profile, group_shap_summary, row_explanation
 from llm_client import available_providers, default_provider
 from narrative import generate_narrative, generate_row_narrative
-from pipeline import build_tables, get_dataset_name, list_use_case_datasets, load_precalculated_dataset
+from pipeline import build_tables, build_tables_from_deployment, get_dataset_name, list_use_case_datasets, load_precalculated_dataset
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -238,16 +238,25 @@ class DatasetSwitchRequest(BaseModel):
 
 
 @app.post("/api/dataset/switch")
-def switch_dataset(req: DatasetSwitchRequest):
+async def switch_dataset(req: DatasetSwitchRequest):
     """
-    Load a pre-scored catalog dataset and replace the active data in memory.
-    The selected dataset must already contain EXPLANATION_N_* columns.
+    Switch the active dataset.
+
+    Fast path: the selected dataset already has EXPLANATION_N_* columns —
+    loads directly from the AI Catalog and returns {"status": "ready"}.
+
+    Slow path: raw dataset without explanation columns — runs batch prediction
+    using the configured deployment in the background and returns
+    {"status": "loading"}. The frontend should poll GET /api/health until
+    status == "ok", then refresh.
     """
     _require_ready()
     if _state.get("data_source") != "datarobot":
         raise HTTPException(status_code=400, detail="Dataset switching is only available in DataRobot mode.")
 
     cfg = _state["cfg"]
+
+    # --- Fast path: pre-scored dataset ---
     try:
         scored_pop, expl_long, prediction_col = load_precalculated_dataset(
             dataset_id=req.dataset_id,
@@ -255,28 +264,63 @@ def switch_dataset(req: DatasetSwitchRequest):
             row_id_col=cfg.row_id_col,
             prediction_col_cfg=cfg.prediction_col,
         )
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        dataset_name = req.display_name or get_dataset_name(req.dataset_id)
+        validate_columns_against_profile(list(scored_pop.columns), _state["profile_cfg"])
+        _state.update({
+            "scored_population": scored_pop,
+            "explanation_long": expl_long,
+            "prediction_col": prediction_col,
+            "current_dataset_id": req.dataset_id,
+            "current_dataset_name": dataset_name,
+        })
+        logger.info("Dataset switched (pre-scored) → %s (%d rows)", dataset_name, len(scored_pop))
+        return {"status": "ready", "dataset_id": req.dataset_id, "dataset_name": dataset_name, "rows_loaded": len(scored_pop)}
+    except RuntimeError as exc:
+        if "EXPLANATION" not in str(exc):
+            raise HTTPException(status_code=400, detail=str(exc))
+        # Dataset has no explanation columns → fall through to batch prediction
 
-    dataset_name = req.display_name or get_dataset_name(req.dataset_id)
+    # --- Slow path: raw dataset, run batch prediction ---
+    if not cfg.deployment_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Dataset has no explanation columns and no DEPLOYMENT_ID is configured for on-demand scoring.",
+        )
 
-    validate_columns_against_profile(list(scored_pop.columns), _state["profile_cfg"])
+    _state["ready"] = False
+    _state.pop("init_error", None)
 
-    _state["scored_population"] = scored_pop
-    _state["explanation_long"] = expl_long
-    _state["prediction_col"] = prediction_col
-    _state["current_dataset_id"] = req.dataset_id
-    _state["current_dataset_name"] = dataset_name
+    async def _score_and_switch() -> None:
+        try:
+            loop = asyncio.get_running_loop()
+            scored_pop, expl_long, prediction_col = await loop.run_in_executor(
+                None,
+                lambda: build_tables_from_deployment(
+                    deployment_id=cfg.deployment_id,
+                    scoring_dataset_id=req.dataset_id,
+                    max_explanations=cfg.max_explanations,
+                    row_id_col=cfg.row_id_col,
+                    prediction_col_cfg=cfg.prediction_col,
+                ),
+            )
+            validate_columns_against_profile(list(scored_pop.columns), _state["profile_cfg"])
+            dataset_name = req.display_name or get_dataset_name(req.dataset_id)
+            _state.update({
+                "scored_population": scored_pop,
+                "explanation_long": expl_long,
+                "prediction_col": prediction_col,
+                "current_dataset_id": req.dataset_id,
+                "current_dataset_name": dataset_name,
+                "ready": True,
+            })
+            logger.info("Dataset switch complete (scored) → %s (%d rows)", dataset_name, len(scored_pop))
+        except Exception as exc:
+            logger.error("Dataset switch failed: %s", exc, exc_info=True)
+            _state["init_error"] = str(exc)
 
-    logger.info(
-        "Dataset switched to %s (%s) — %d rows",
-        dataset_name, req.dataset_id, len(scored_pop),
-    )
-    return {
-        "dataset_id": req.dataset_id,
-        "dataset_name": dataset_name,
-        "rows_loaded": len(scored_pop),
-    }
+    asyncio.create_task(_score_and_switch())
+    logger.info("Dataset switch started (batch prediction) for %s", req.dataset_id)
+    return {"status": "loading", "dataset_id": req.dataset_id}
 
 
 # ---------------------------------------------------------------------------

@@ -147,13 +147,23 @@ export const fetchDatasets = () =>
     .get<{ datasets: DatasetInfo[]; use_case_mode: boolean }>("api/datasets")
     .then((r) => r.data);
 
+export interface SwitchResult {
+  status: "ready" | "loading";
+  dataset_id: string;
+  dataset_name?: string;
+  rows_loaded?: number;
+}
+
 export const switchDataset = (dataset_id: string, display_name?: string) =>
   api
-    .post<{ dataset_id: string; dataset_name: string; rows_loaded: number }>("api/dataset/switch", {
+    .post<SwitchResult>("api/dataset/switch", {
       dataset_id,
       display_name: display_name || null,
     })
     .then((r) => r.data);
+
+export const fetchHealth = () =>
+  api.get<{ status: string; detail?: string }>("api/health").then((r) => r.data);
 
 export const postNarrative = (
   filters: Record<string, unknown>,

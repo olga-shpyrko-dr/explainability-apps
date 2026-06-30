@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { DatasetInfo } from "../api";
-import { fetchDatasets, switchDataset } from "../api";
+import { fetchDatasets, fetchHealth, switchDataset } from "../api";
 
 interface Props {
   currentDatasetId: string | null;
@@ -16,6 +16,7 @@ export default function DatasetSelector({ currentDatasetId, currentDatasetName, 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [scoring, setScoring] = useState(false);
   const [listLoading, setListLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,13 +36,38 @@ export default function DatasetSelector({ currentDatasetId, currentDatasetName, 
     if (!selectedId) return;
     setLoading(true);
     setError("");
+    const selectedName = datasets.find((d) => d.id === selectedId)?.name ?? selectedId;
     try {
       const res = await switchDataset(selectedId, displayName || undefined);
-      onSwitch(res.dataset_id, res.dataset_name);
-      setOpen(false);
-      setSelectedId(null);
-      setDisplayName("");
-      setSearch("");
+      if (res.status === "ready") {
+        onSwitch(res.dataset_id, res.dataset_name ?? selectedName);
+        setOpen(false);
+        setSelectedId(null);
+        setDisplayName("");
+        setSearch("");
+      } else {
+        // Batch prediction running — poll health until ready
+        setScoring(true);
+        while (true) {
+          await new Promise((r) => setTimeout(r, 5000));
+          try {
+            const h = await fetchHealth();
+            if (h.status === "ok") {
+              onSwitch(selectedId, displayName || selectedName);
+              setOpen(false);
+              setSelectedId(null);
+              setDisplayName("");
+              setSearch("");
+              break;
+            }
+            if (h.status === "error") {
+              setError(h.detail ?? "Scoring failed — check application logs.");
+              break;
+            }
+          } catch { /* network blip — keep polling */ }
+        }
+        setScoring(false);
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -124,8 +150,8 @@ export default function DatasetSelector({ currentDatasetId, currentDatasetName, 
                 style={{ ...searchStyle, marginBottom: 8 }}
               />
               {error && <div style={{ color: "#c0392b", fontSize: 11, marginBottom: 6 }}>{error}</div>}
-              <button onClick={handleLoad} disabled={loading} style={loadBtnStyle}>
-                {loading ? "Loading dataset…" : "Load selected dataset"}
+              <button onClick={handleLoad} disabled={loading || scoring} style={loadBtnStyle}>
+                {scoring ? "Scoring dataset — this may take a few minutes…" : loading ? "Loading…" : "Load selected dataset"}
               </button>
             </div>
           )}
