@@ -505,78 +505,44 @@ def get_dataset_name(dataset_id: str) -> str:
 
 def list_use_case_datasets(use_case_id: Optional[str], limit: int = 100) -> list[dict]:
     """
-    Return [{id, name}] for datasets in the given use case (or all datasets if
-    use_case_id is None).
+    Return [{id, name}] for datasets in the given use case (or all datasets).
 
-    Tries two endpoints in order:
-      1. useCases/{id}/entities/  — use-case entity roster
-      2. datasets/?useCaseId={id} — AI Catalog with use-case filter (fallback)
-    Falls back to all datasets when use_case_id is None.
+    Correct endpoint (confirmed): GET useCases/{id}/datasets/
+    Response shape: {"count": N, "next": url|null, "data": [{"datasetId": ..., "name": ...}]}
     """
     import datarobot as dr  # type: ignore
 
     client = dr.client.get_client()
     items: list[dict] = []
 
-    def _extract(r: dict) -> dict:
-        item_id = (
-            r.get("entityId") or r.get("datasetId") or r.get("id") or ""
-        ).strip()
-        item_name = (
-            r.get("name") or r.get("datasetName") or r.get("entityName") or ""
-        ).strip()
-        if not item_name and item_id:
-            try:
-                item_name = get_dataset_name(item_id)
-            except Exception:
-                item_name = item_id
-        return {"id": item_id, "name": item_name or item_id}
-
     try:
         if use_case_id:
-            # --- Attempt 1: use-case entities endpoint ---
-            try:
+            offset = 0
+            page_size = min(limit, 100)
+            while len(items) < limit:
                 resp = client.get(
-                    f"useCases/{use_case_id}/entities/",
-                    params={"limit": limit},
+                    f"useCases/{use_case_id}/datasets/",
+                    params={"limit": page_size, "offset": offset},
                 ).json()
-                raw = resp.get("data", []) if isinstance(resp, dict) else (resp if isinstance(resp, list) else [])
-                logger.info(
-                    "useCases/%s/entities: count=%d, first=%s",
-                    use_case_id, len(raw), raw[0] if raw else None,
-                )
-                NON_DATASET = {"MODEL", "PROJECT", "DEPLOYMENT", "NOTEBOOK", "APPLICATION"}
-                for r in raw:
-                    if str(r.get("entityType", "")).upper() in NON_DATASET:
-                        continue
-                    rec = _extract(r)
-                    if rec["id"]:
-                        items.append(rec)
-            except Exception as exc1:
-                logger.warning("useCases entities call failed: %s", exc1)
-
-            # --- Attempt 2: AI Catalog with useCaseId filter ---
-            if not items:
-                try:
-                    resp2 = client.get(
-                        "datasets/",
-                        params={"useCaseId": use_case_id, "limit": limit},
-                    ).json()
-                    raw2 = resp2.get("data", []) if isinstance(resp2, dict) else []
-                    logger.info("datasets/?useCaseId: count=%d, first=%s", len(raw2), raw2[0] if raw2 else None)
-                    for r in raw2:
-                        rec = _extract(r)
-                        if rec["id"]:
-                            items.append(rec)
-                except Exception as exc2:
-                    logger.warning("datasets/?useCaseId call failed: %s", exc2)
+                page = resp.get("data", [])
+                for r in page:
+                    dataset_id = r.get("datasetId") or r.get("id") or ""
+                    name = r.get("name") or dataset_id
+                    if dataset_id:
+                        items.append({"id": dataset_id, "name": name})
+                if not resp.get("next") or len(page) < page_size:
+                    break
+                offset += page_size
         else:
             resp = client.get("datasets/", params={"limit": limit}).json()
-            raw = resp.get("data", []) if isinstance(resp, dict) else resp
-            items = [_extract(r) for r in raw]
+            for r in resp.get("data", []):
+                dataset_id = r.get("datasetId") or r.get("id") or ""
+                name = r.get("name") or dataset_id
+                if dataset_id:
+                    items.append({"id": dataset_id, "name": name})
 
     except Exception as exc:
-        logger.warning("Failed to list datasets (use_case_id=%s): %s", use_case_id, exc, exc_info=True)
+        logger.warning("Failed to list datasets (use_case_id=%s): %s", use_case_id, exc)
 
     logger.info("list_use_case_datasets → %d items", len(items))
 
