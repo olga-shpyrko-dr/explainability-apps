@@ -285,12 +285,14 @@ const sidebarStyle: React.CSSProperties = {
 };
 const summaryBarStyle: React.CSSProperties = {
   background: "#FFFFFF",
-  border: "1px solid #E4E4E4",
-  borderRadius: 4,
+  borderBottom: "1px solid #E4E4E4",
   padding: "14px 24px",
   display: "flex",
   gap: 32,
-  marginBottom: 16,
+  marginTop: -20,
+  marginLeft: -20,
+  marginRight: -20,
+  marginBottom: 20,
   flexWrap: "wrap",
   alignItems: "center",
 };
