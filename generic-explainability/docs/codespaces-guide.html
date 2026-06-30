@@ -544,11 +544,13 @@ npm run dev</code></pre>
     <div class="step">
       <div class="step-num">01</div>
       <div class="step-body">
-        <h2>Install prerequisites <span style="font-weight:400;color:#888;font-size:14px;">(once per machine)</span></h2>
+        <h2>Verify CLI availability</h2>
+        <p>In a DataRobot Codespace, <code>datarobot-cli</code> (<code>dr</code>) is pre-installed and authentication is already configured via the Codespace session — no install or login step needed.</p>
+        <pre><code>dr --version   # confirm CLI is present</code></pre>
+        <p>If you are running these steps from a <strong>local machine</strong> instead, first install the CLI and authenticate:</p>
         <pre><code>pip install datarobot-cli
 curl -LsSf https://astral.sh/uv/install.sh | sh
 dr auth set-url &amp;&amp; dr auth login</code></pre>
-        <p><code>dr auth set-url</code> points the CLI at your DataRobot instance (e.g. <code>https://app.eu.datarobot.com</code>). <code>dr auth login</code> stores your API token.</p>
       </div>
     </div>
 

@@ -236,7 +236,27 @@ def _get_or_create_batch_prediction_deployment(
         explanation_algorithm="shap",
         passthrough_columns=[row_id_col],
     )
-    job.wait_for_completion()
+    try:
+        job.wait_for_completion()
+    except Exception as exc:
+        # DR marks localFile output jobs as "ABORTED" when the SDK begins
+        # downloading results — this is expected behavior, not a real failure.
+        # Proceed if the file was written; raise a clear error otherwise.
+        if "aborted" in str(exc).lower():
+            if local_csv.exists() and local_csv.stat().st_size > 0:
+                logger.info(
+                    "Batch job marked aborted after results download (expected for localFile output) "
+                    "— output file present (%d bytes), continuing.",
+                    local_csv.stat().st_size,
+                )
+            else:
+                raise RuntimeError(
+                    "Batch prediction job was aborted before results could be saved locally. "
+                    "This can happen if the results were downloaded via the DataRobot UI "
+                    "before the backend could retrieve them. Please try again."
+                ) from exc
+        else:
+            raise
 
     if not local_csv.exists():
         raise RuntimeError(
