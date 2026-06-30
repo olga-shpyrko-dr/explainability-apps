@@ -195,6 +195,7 @@ def _get_or_create_batch_prediction_deployment(
     deployment_id: str,
     catalog_dataset_id: str,
     max_explanations: int,
+    row_id_col: str,
 ) -> pd.DataFrame:
     """
     Run a batch prediction job using a DataRobot deployment and return the
@@ -212,6 +213,7 @@ def _get_or_create_batch_prediction_deployment(
         cache.get("mode") == "deployment"
         and cache.get("deployment_id") == deployment_id
         and cache.get("catalog_dataset_id") == catalog_dataset_id
+        and cache.get("row_id_col") == row_id_col
         and local_csv.exists()
     ):
         logger.info("Using cached batch prediction output from %s", local_csv)
@@ -232,6 +234,7 @@ def _get_or_create_batch_prediction_deployment(
         num_concurrent=4,
         max_explanations=max_explanations,
         explanation_algorithm="shap",
+        passthrough_columns=[row_id_col],
     )
     job.wait_for_completion()
 
@@ -244,6 +247,7 @@ def _get_or_create_batch_prediction_deployment(
         "mode": "deployment",
         "deployment_id": deployment_id,
         "catalog_dataset_id": catalog_dataset_id,
+        "row_id_col": row_id_col,
     })
     logger.info("Batch prediction job complete — output written to %s", local_csv)
     return pd.read_csv(local_csv)
@@ -277,6 +281,7 @@ def build_tables_from_deployment(
         deployment_id=deployment_id,
         catalog_dataset_id=scoring_dataset_id,
         max_explanations=max_explanations,
+        row_id_col=row_id_col,
     )
     logger.info("Batch output loaded: %s rows × %s cols", *output_df.shape)
 
