@@ -14,8 +14,9 @@ The caller only invokes `call_llm(messages, system, settings, provider)`.
 from __future__ import annotations
 
 import logging
+import time
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import litellm
 
@@ -23,6 +24,32 @@ logger = logging.getLogger(__name__)
 
 # Suppress litellm's noisy success logs
 litellm.suppress_debug_info = True
+
+# Gateways/providers occasionally return a transient 503 (model warming up,
+# brief rate limiting, etc.). A single failed call previously surfaced as a
+# raw "AxiosError: Request failed with status code 503" in the UI with no
+# retry — retry a few times with backoff before giving up for good.
+_TRANSIENT_STATUS_CODES = {429, 500, 502, 503, 504}
+
+
+def _with_llm_retry(call: Callable[[], Any], *, retries: int = 3, delay_s: float = 2.0) -> Any:
+    last_exc: Exception | None = None
+    for attempt in range(retries + 1):
+        try:
+            return call()
+        except Exception as exc:  # noqa: BLE001 - re-raised below if not transient/exhausted
+            status_code = getattr(exc, "status_code", None)
+            is_transient = status_code in _TRANSIENT_STATUS_CODES or "503" in str(exc)
+            last_exc = exc
+            if not is_transient or attempt == retries:
+                raise
+            logger.warning(
+                "LLM call failed with transient error (attempt %d/%d): %s — retrying in %.1fs",
+                attempt + 1, retries + 1, exc, delay_s,
+            )
+            time.sleep(delay_s)
+            delay_s *= 2
+    raise last_exc  # pragma: no cover - unreachable, satisfies type checkers
 
 
 class LLMProvider(str, Enum):
@@ -176,14 +203,14 @@ def _call_dr_gateway(
 
     logger.info("DR Gateway call: base=%s model=%s", gateway_base, settings.dr_gateway_model)
 
-    response = litellm.completion(
+    response = _with_llm_retry(lambda: litellm.completion(
         model=f"openai/{settings.dr_gateway_model}",
         messages=messages,
         api_base=gateway_base,
         api_key=settings.datarobot_api_token,
         max_tokens=max_tokens,
         response_format={"type": "json_object"},
-    )
+    ))
     content = response.choices[0].message.content
     logger.info("DR Gateway raw response: %.500s", content)
     return content
@@ -203,13 +230,13 @@ def _call_dr_deployment(
 
     logger.info("DR Deployment call: deployment_id=%s", settings.dr_llm_deployment_id)
 
-    response = litellm.completion(
+    response = _with_llm_retry(lambda: litellm.completion(
         model=f"datarobot/{settings.dr_llm_deployment_id}",
         messages=messages,
         api_base=deployment_base,
         api_key=settings.datarobot_api_token,
         max_tokens=max_tokens,
-    )
+    ))
     return response.choices[0].message.content
 
 
@@ -225,14 +252,14 @@ def _call_azure_openai(
         settings.azure_openai_api_base,
     )
 
-    response = litellm.completion(
+    response = _with_llm_retry(lambda: litellm.completion(
         model=f"azure/{settings.azure_openai_deployment_name}",
         messages=messages,
         api_key=settings.azure_openai_api_key,
         api_base=settings.azure_openai_api_base,
         api_version=settings.azure_openai_api_version,
         max_tokens=max_tokens,
-    )
+    ))
     return response.choices[0].message.content
 
 
@@ -247,11 +274,11 @@ def _call_anthropic(
     """
     logger.info("Anthropic call: model=%s", settings.anthropic_model)
 
-    response = litellm.completion(
+    response = _with_llm_retry(lambda: litellm.completion(
         model=f"anthropic/{settings.anthropic_model}",
         messages=messages,
         system=system,
         api_key=settings.anthropic_api_key,
         max_tokens=max_tokens,
-    )
+    ))
     return response.choices[0].message.content

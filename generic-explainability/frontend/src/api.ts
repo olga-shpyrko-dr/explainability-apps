@@ -27,6 +27,27 @@ export async function withRetry<T>(
 }
 
 // ---------------------------------------------------------------------------
+// Turn an axios/network error into a short, human-readable message instead
+// of the raw "AxiosError: Request failed with status code 503" string.
+// ---------------------------------------------------------------------------
+export function formatApiError(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const status = err.response?.status;
+    const detail = (err.response?.data as { detail?: string } | undefined)?.detail;
+    if (status === 503) {
+      return "The AI provider is temporarily unavailable (503). Please try again in a moment.";
+    }
+    if (status === 429) {
+      return "The AI provider is rate-limiting requests (429). Please try again shortly.";
+    }
+    if (detail) return detail;
+    if (status) return `Request failed (${status}).`;
+    if (err.message === "Network Error") return "Network error — check your connection and try again.";
+  }
+  return err instanceof Error ? err.message : String(err);
+}
+
+// ---------------------------------------------------------------------------
 // App config (from /api/config — loaded once at frontend startup)
 // ---------------------------------------------------------------------------
 
