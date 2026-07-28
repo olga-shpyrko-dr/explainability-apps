@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { LLMProviderInfo } from "../api";
-import { fetchLLMProviders, postNarrative } from "../api";
+import { fetchLLMProviders, formatApiError, postNarrative } from "../api";
 
 interface Props {
   filters: Record<string, unknown>;
@@ -46,7 +46,7 @@ export default function NarrativePanel({ filters, nRows, cohortWarningMinRows }:
       setProviderUsed(res.provider_used);
       setDisclaimer(res.disclaimer);
     } catch (e: unknown) {
-      setError(String(e));
+      setError(formatApiError(e));
     } finally {
       setLoading(false);
     }

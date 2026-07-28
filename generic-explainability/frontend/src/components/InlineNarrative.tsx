@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { LLMProviderInfo } from "../api";
-import { fetchLLMProviders, postNarrative, postRowNarrative } from "../api";
+import { fetchLLMProviders, formatApiError, postNarrative, postRowNarrative } from "../api";
 
 interface Props {
   mode: "group" | "row";
@@ -112,7 +112,7 @@ export default function InlineNarrative({ mode, filters, rowId, nRows }: Props) 
       setProviderUsed(res.provider_used);
       setDisclaimer(res.disclaimer);
     } catch (e: unknown) {
-      setError(String(e));
+      setError(formatApiError(e));
     } finally {
       setLoading(false);
     }
