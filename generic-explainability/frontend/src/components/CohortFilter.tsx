@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { AppConfig, ColumnMeta, ProfileAttribute } from "../api";
-import { fetchColumns } from "../api";
+import { fetchColumns, withRetry } from "../api";
 
 interface Props {
   appConfig: AppConfig | null;
@@ -12,11 +12,15 @@ export default function CohortFilter({ appConfig, filters, onChange }: Props) {
   const [colMap, setColMap] = useState<Record<string, ColumnMeta>>({});
 
   useEffect(() => {
-    fetchColumns().then((cols) => {
-      const map: Record<string, ColumnMeta> = {};
-      cols.forEach((c) => { map[c.name] = c; });
-      setColMap(map);
-    });
+    // Backend may still be finishing its startup scoring job (503s until
+    // ready) — retry rather than giving up after the first attempt.
+    withRetry(fetchColumns)
+      .then((cols) => {
+        const map: Record<string, ColumnMeta> = {};
+        cols.forEach((c) => { map[c.name] = c; });
+        setColMap(map);
+      })
+      .catch((e) => console.error("Failed to load /api/columns:", e));
   }, []);
 
   function setFilter(col: string, value: unknown) {

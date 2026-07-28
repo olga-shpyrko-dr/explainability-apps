@@ -7,6 +7,26 @@ const BASE = import.meta.env.VITE_API_URL ?? import.meta.env.BASE_URL;
 export const api = axios.create({ baseURL: BASE });
 
 // ---------------------------------------------------------------------------
+// Startup (and dataset-switch scoring) can take a while, during which every
+// /api/* route returns 503. Wrap non-config fetches with this so a request
+// made just before the backend is ready retries instead of failing for good.
+// ---------------------------------------------------------------------------
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  { retries = 60, delayMs = 4000 }: { retries?: number; delayMs?: number } = {}
+): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      if (status !== 503 || attempt >= retries) throw err;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // App config (from /api/config — loaded once at frontend startup)
 // ---------------------------------------------------------------------------
 
