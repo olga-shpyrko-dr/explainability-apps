@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { AppConfig, CohortProfile, GroupStat, RowExplanation } from "./api";
-import { fetchAppConfig, fetchCohort, fetchGroups, fetchRow } from "./api";
+import { fetchAppConfig, fetchCohort, fetchGroups, fetchRow, withRetry } from "./api";
 import CohortFilter from "./components/CohortFilter";
 import DatasetSelector from "./components/DatasetSelector";
 import GroupExplanationChart from "./components/GroupExplanationChart";
@@ -55,9 +55,13 @@ function App() {
     setProfileLoading(true);
     setGroupsLoading(true);
     try {
-      const [p, g] = await Promise.all([fetchCohort(filters), fetchGroups(filters)]);
+      // Backend may still be finishing its startup scoring job (503s until
+      // ready) — retry rather than giving up after the first attempt.
+      const [p, g] = await withRetry(() => Promise.all([fetchCohort(filters), fetchGroups(filters)]));
       setProfile(p);
       setGroups(g.groups);
+    } catch (e) {
+      console.error("Failed to load cohort/groups data:", e);
     } finally {
       setProfileLoading(false);
       setGroupsLoading(false);
