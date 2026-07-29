@@ -91,6 +91,7 @@ EXCLUDE_PATTERNS = [
         r".*\.git/.*",
         r".*\.env$",
         r".*\.prediction_dataset_cache\.json",
+        r".*\.batch_output_cache\.csv",
     ]
 ]
 

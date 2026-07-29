@@ -13,6 +13,9 @@ build/
 
 # Backend runtime cache
 backend/.prediction_dataset_cache.json
+backend/.batch_output_cache.csv
+generic-explainability/backend/.prediction_dataset_cache.json
+generic-explainability/backend/.batch_output_cache.csv
 
 # Node / frontend
 frontend/node_modules/
