@@ -6,6 +6,10 @@ export default defineConfig({
   plugins: [react()],
   base: "./",
   server: {
+    // Codespace / notebook port proxy forwards as app.*.datarobot.com — Vite 6+ blocks
+    // unknown Host headers unless explicitly allowed.
+    allowedHosts: [".datarobot.com", "localhost"],
+    host: true,
     proxy: {
       "/api": "http://localhost:8000",
     },
