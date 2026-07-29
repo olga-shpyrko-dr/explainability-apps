@@ -1,8 +1,6 @@
 # Generic Binary Classification Explainability App — Specification
 
-**Version:** 0.1 (Generic MVP)
-**Derived from:** IL Protection Lapse Explainability App v0.1
-**Date:** 2026-06-26
+**Version:** 1.0 (Generic)
 
 ---
 
@@ -16,9 +14,8 @@
 6. [SHAP aggregation algorithm](#6-shap-aggregation-algorithm)
 7. [LLM narrative layer](#7-llm-narrative-layer)
 8. [Technical architecture](#8-technical-architecture)
-9. [Example configurations](#9-example-configurations)
-10. [Migration from the IL app](#10-migration-from-the-il-app)
-11. [Open questions and caveats](#11-open-questions-and-caveats)
+9. [Example configuration](#9-example-configuration)
+10. [Open questions and caveats](#10-open-questions-and-caveats)
 
 ---
 
@@ -235,18 +232,18 @@ Controls the LLM system prompt and the language used in the user prompt template
 }
 ```
 
-| Field | Example (insurance lapse) | Example (telecom churn) |
+| Field | Example (fraud detection) | Example (telecom churn) |
 |---|---|---|
-| `domain_description` | `life insurance protection lapse propensity` | `mobile subscriber churn prediction` |
-| `entity_label` | `policyholder` | `subscriber` |
-| `entity_label_plural` | `policyholders` | `subscribers` |
-| `target_audience` | `financial adviser` | `customer success manager` |
-| `high_score_label` | `high lapse risk` | `high churn risk` |
-| `low_score_label` | `low lapse risk` | `likely to be retained` |
-| `factor_positive_label` | `factor increasing surrender risk` | `factor increasing churn likelihood` |
-| `factor_negative_label` | `factor reducing surrender risk` | `factor reducing churn likelihood` |
-| `outcome_label` | `observed lapse rate` | `observed churn rate` |
-| `recommended_action_hint` | `Prioritise outreach to ...` | `Consider a targeted retention offer for ...` |
+| `domain_description` | `motor insurance claim fraud detection` | `mobile subscriber churn prediction` |
+| `entity_label` | `claim` | `subscriber` |
+| `entity_label_plural` | `claims` | `subscribers` |
+| `target_audience` | `claims investigator` | `customer success manager` |
+| `high_score_label` | `high fraud risk` | `high churn risk` |
+| `low_score_label` | `low fraud risk` | `likely to be retained` |
+| `factor_positive_label` | `factor increasing fraud likelihood` | `factor increasing churn likelihood` |
+| `factor_negative_label` | `factor reducing fraud likelihood` | `factor reducing churn likelihood` |
+| `outcome_label` | `confirmed fraud rate` | `observed churn rate` |
+| `recommended_action_hint` | `Prioritise manual review for ...` | `Consider a targeted retention offer for ...` |
 | `custom_system_prompt` | `null` | `null` |
 
 If `custom_system_prompt` is a non-null string, it is used verbatim as the LLM system prompt and all other fields are ignored. Use this for full control over the persona without modifying code.
@@ -590,63 +587,9 @@ No DataRobot API calls are made in CSV mode.
 
 ---
 
-## 9. Example configurations
+## 9. Example configuration
 
-### 9.1 Insurance protection lapse (the IL app, generalized)
-
-**.env:**
-```bash
-APP_TITLE=Protection Lapse Propensity — Explainability
-APP_SUBTITLE=Under-55 cohort, excl. UL
-DATA_SOURCE=datarobot
-DATAROBOT_API_TOKEN=...
-DATAROBOT_ENDPOINT=https://app.eu.datarobot.com/api/v2
-PROJECT_ID=6a22f2218f74af009899ddb1
-MODEL_ID=6a22f2ab13b0a82934ef1155
-SCORING_DATASET_ID=6a2275eb326d5530a77a0b30
-TRAINING_DATASET_ID=6a2275eb1a27ddce9c076a03
-ROW_ID_COL=Policy_Number
-PREDICTION_COL=Lapse_ind_1_PREDICTION
-OUTCOME_COL=Lapse_ind
-MAX_EXPLANATIONS=4
-DR_GATEWAY_MODEL=azure-openai/gpt-4o-mini
-```
-
-**narrative_config.json:**
-```json
-{
-  "domain_description": "life insurance protection lapse propensity",
-  "entity_label": "policyholder",
-  "entity_label_plural": "policyholders",
-  "target_audience": "financial adviser",
-  "high_score_label": "high lapse risk",
-  "low_score_label": "low lapse risk",
-  "factor_positive_label": "factor increasing surrender risk",
-  "factor_negative_label": "factor reducing surrender risk",
-  "outcome_label": "observed lapse rate",
-  "recommended_action_hint": "Prioritise outreach to policyholders with ...",
-  "custom_system_prompt": null
-}
-```
-
-**profile_config.json:**
-```json
-{
-  "profile_attributes": [
-    { "column": "Age_life1", "display_name": "Age", "filter_type": "range", "show_in_profile": true },
-    { "column": "SmokerStatus", "display_name": "Smoker", "filter_type": "toggle", "show_in_profile": true },
-    { "column": "Product_Desc", "display_name": "Product", "filter_type": "multiselect", "show_in_profile": true },
-    { "column": "MonthsSinceReview", "display_name": "Months since review", "filter_type": "range", "show_in_profile": true },
-    { "column": "Decile", "display_name": "Score decile", "filter_type": "range", "show_in_profile": false }
-  ],
-  "score_filter": { "show": true, "display_name": "Lapse Propensity Score" },
-  "top_explanation_filter": { "show": true, "display_name": "Top Explanation Feature", "explanation_slot": 1 }
-}
-```
-
----
-
-### 9.2 Telecom subscriber churn
+### 9.1 Telecom subscriber churn
 
 **.env:**
 ```bash
@@ -709,40 +652,7 @@ ANTHROPIC_MODEL=claude-sonnet-4-6
 
 ---
 
-## 10. Migration from the IL app
-
-Every domain-specific value currently hardcoded in the IL app maps to a generic config parameter:
-
-| Hardcoded location | Current value | Generic config |
-|---|---|---|
-| `frontend/src/App.tsx` — title | `"Protection Lapse Propensity — Explainability"` | `APP_TITLE` (.env) |
-| `frontend/src/App.tsx` — subtitle | `"Model 6a22f2ab · Under-55 cohort, excl. UL"` | `APP_SUBTITLE` (.env) |
-| `frontend/src/components/CohortFilter.tsx` — filter columns | `Age_life1`, `SmokerStatus`, `Product_Desc`, `MonthsSinceReview`, `Decile` | `profile_config.json` → `profile_attributes` |
-| `frontend/src/components/CohortFilter.tsx` — explanation filter | `EXPLANATION_1_FEATURE_NAME` | `profile_config.json` → `top_explanation_filter` |
-| `backend/narrative.py` — `SYSTEM_PROMPT` | `"You are an insurance data analyst..."` | `narrative_config.json` → assembled system prompt |
-| `backend/narrative.py` — `USER_TEMPLATE` | `"lapse propensity"`, `"policyholders"`, `"surrender risk"` | `narrative_config.json` fields |
-| `backend/config.py` — prediction column | `Lapse_ind_1_PREDICTION` | `PREDICTION_COL` (.env) |
-| `backend/config.py` — project/model/dataset IDs | hardcoded defaults | `.env` — no defaults |
-| `backend/cohort.py` — warning threshold | `30` | `COHORT_WARNING_MIN_ROWS` (.env) |
-| `backend/cohort.py` — top features | `5` | `TOP_FEATURES_PER_GROUP` (.env) |
-| `backend/narrative.py` — `max_tokens` | `700` | `NARRATIVE_MAX_TOKENS` (.env) |
-| `backend/narrative.py` — groups in prompt | `6` | `NARRATIVE_GROUPS_IN_PROMPT` (.env) |
-| `backend/narrative.py` — features per group | `2` | `NARRATIVE_FEATURES_PER_GROUP` (.env) |
-| `backend/narrative.py` — outcome note wording | `"OBSERVED LAPSE RATE"` | `narrative_config.json` → `outcome_label` |
-
-**Steps to migrate the IL app to the generic framework:**
-
-1. Create `narrative_config.json` using the insurance lapse values from Section 9.1.
-2. Create `profile_config.json` using the IL filter columns from `CohortFilter.tsx`.
-3. Move `project_id`, `model_id`, `scoring_dataset_id` from hardcoded defaults in `config.py` to required env vars.
-4. Add `APP_TITLE` and `APP_SUBTITLE` to `.env`.
-5. Replace the hardcoded `SYSTEM_PROMPT` and `USER_TEMPLATE` in `narrative.py` with the parameterised template (reading labels from `narrative_config.json`).
-6. Add `GET /api/config` endpoint; update the React frontend to read title, labels, and sidebar layout from this endpoint rather than hardcoded constants.
-7. Update `CohortFilter.tsx` to render filter controls from `/api/config` → `profile_attributes` rather than hardcoded column names.
-
----
-
-## 11. Open questions and caveats
+## 10. Open questions and caveats
 
 | # | Question | Impact |
 |---|---|---|
