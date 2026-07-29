@@ -61,6 +61,9 @@ generic-explainability/
 │   ├── README.md                  # This file
 │   ├── codespaces-guide.md        # Deployment guide (Markdown)
 │   └── codespaces-guide.pdf       # Deployment guide (PDF)
+├── data/
+│   ├── claim_fraud_training_10k.csv     # Example training data (has FRAUD_FLAG target)
+│   └── claim_fraud_scoring_sample_100.csv  # Example scoring data (no target)
 ├── start-codespace.sh             # Local Codespace test launcher
 ├── start-app.sh                   # Custom Application container entry point
 ├── build-app.sh                   # Pre-build frontend (required before dr run deploy)
@@ -174,6 +177,24 @@ Entity labels (e.g. "policy", "claim"), score labels (e.g. "lapse propensity", "
 | `AZURE_OPENAI_*` | Azure OpenAI credentials | optional |
 | `ANTHROPIC_API_KEY` | Anthropic API key | optional |
 | `APP_TITLE` / `APP_SUBTITLE` | Displayed in the app header | optional |
+
+---
+
+## Example dataset — reproduce this demo from scratch
+
+`data/` has the raw data behind the current Claim Fraud demo configuration, for anyone who wants to
+rebuild the model/deployment instead of reusing the existing `DEPLOYMENT_ID`:
+
+- **`claim_fraud_training_10k.csv`** — 10,000 rows, motor insurance claims. Target column `FRAUD_FLAG`
+  (binary 0/1, ~5% positive rate). Upload to the AI Catalog, run AutoML with `FRAUD_FLAG` as the target,
+  enable SHAP prediction explanations on the model you deploy, then set `DEPLOYMENT_ID` to the new
+  deployment.
+- **`claim_fraud_scoring_sample_100.csv`** — 100 rows, no target column. This is the same data currently
+  configured as `SCORING_DATASET_ID` in this demo. Upload it (or a fresher extract) to the AI Catalog and
+  point `SCORING_DATASET_ID` at it, or load it directly in `DATA_SOURCE=csv` mode for offline testing.
+
+Both files use `POLICY_NUMBER` as the row identifier — set `ROW_ID_COL=POLICY_NUMBER` when using them
+(this demo's config differs from other example configs in this repo that use `TRANSACTION_ID`).
 
 ---
 

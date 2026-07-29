@@ -8,6 +8,8 @@ __pycache__/
 .batch_output_cache.csv
 data/scoring_sample.csv
 data/*.csv
+!data/claim_fraud_training_10k.csv
+!data/claim_fraud_scoring_sample_100.csv
 node_modules/
 dist/
 frontend/.vite/
