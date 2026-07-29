@@ -28,8 +28,12 @@ _TRANSIENT_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
 def _litellm():
-    import litellm
-
+    try:
+        import litellm
+    except ImportError as exc:
+        raise RuntimeError(
+            "litellm is not installed. Narrative features require requirements-llm.txt."
+        ) from exc
     litellm.suppress_debug_info = True
     return litellm
 

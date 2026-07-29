@@ -1,0 +1,3 @@
+# Optional LLM narrative features — installed during Docker build (build-app.sh).
+litellm>=1.40
+anthropic>=0.28

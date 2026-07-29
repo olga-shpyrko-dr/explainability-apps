@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Production entry point for DataRobot Custom Applications.
 # Frontend MUST be pre-built (./build-app.sh or ./deploy.sh) before deploy.
-# Python deps are installed automatically from requirements.txt by the platform —
-# do NOT pip install here (adds minutes to startup and often fails the health probe).
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -43,12 +41,33 @@ if [[ ! -f frontend/dist/index.html ]]; then
   exit 1
 fi
 
+_ensure_python_deps() {
+  if python3 -c "import fastapi, uvicorn; from datarobot_asgi_middleware import DataRobotASGIMiddleware" 2>/dev/null; then
+    return 0
+  fi
+  echo "WARNING: core Python imports failed — installing from requirements.txt…" >&2
+  python3 -m pip install --no-cache-dir -r requirements.txt
+  if [[ -f requirements-llm.txt ]]; then
+    python3 -m pip install --no-cache-dir -r requirements-llm.txt
+  fi
+  python3 -c "import fastapi, uvicorn; from datarobot_asgi_middleware import DataRobotASGIMiddleware"
+}
+
+echo "Python $(python3 --version 2>&1)"
 echo "Starting explainability API on 0.0.0.0:8080…"
 export PYTHONUNBUFFERED=1
 
+_ensure_python_deps || {
+  echo "ERROR: Python imports failed — check Docker build log for pip install errors." >&2
+  exit 1
+}
+
 cd backend
-python3 -c "import fastapi, uvicorn; from datarobot_asgi_middleware import DataRobotASGIMiddleware; print('imports ok')" \
-  || { echo "ERROR: Python imports failed — check requirements.txt / build-app.sh output." >&2; exit 1; }
+python3 -c "import main" || {
+  echo "ERROR: failed to import backend/main.py:" >&2
+  python3 -c "import traceback; traceback.print_exc()" 2>&1 || true
+  exit 1
+}
 
 exec python3 -m uvicorn main:app \
   --host 0.0.0.0 \

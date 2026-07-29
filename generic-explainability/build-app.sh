@@ -31,6 +31,9 @@ fi
 if [[ -f "${ROOT}/requirements.txt" ]]; then
   echo "Installing Python dependencies into application image…"
   python3 -m pip install --no-cache-dir -r "${ROOT}/requirements.txt"
+  if [[ -f "${ROOT}/requirements-llm.txt" ]]; then
+    python3 -m pip install --no-cache-dir -r "${ROOT}/requirements-llm.txt"
+  fi
 fi
 
 echo "Done — frontend/dist ready and Python deps installed."
