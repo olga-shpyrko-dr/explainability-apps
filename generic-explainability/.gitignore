@@ -1,5 +1,7 @@
 .env
 .DS_Store
+!.env.template
+!.datarobot/cli/*.yaml
 __pycache__/
 *.py[cod]
 .prediction_dataset_cache.json
