@@ -36,6 +36,7 @@ generic-explainability/
 │   ├── main.py                    # FastAPI app — API endpoints + startup pipeline
 │   ├── pipeline.py                # Data acquisition: batch prediction via DR deployment
 │   ├── cohort.py                  # Filter engine, profile stats, group SHAP aggregation
+│   ├── word_cloud.py              # Word-frequency tokenization for the word cloud insight
 │   ├── narrative.py               # LLM prompt builder + narrative generation
 │   ├── llm_client.py              # Unified LLM client (LiteLLM abstraction)
 │   ├── config.py                  # Settings (pydantic-settings, .env / dr dotenv)
@@ -43,7 +44,6 @@ generic-explainability/
 │   ├── feature_group_mapping.json # Feature → business group mapping (edit per use case)
 │   ├── profile_config.json        # Filter panel columns and score display config
 │   ├── narrative_config.json      # Entity labels, score labels, LLM prompt overrides
-│   ├── create_scoring_sample.py   # Helper: generate + upload a scoring dataset
 │   └── .env.template              # Environment variable template
 ├── frontend/
 │   ├── src/
@@ -54,6 +54,8 @@ generic-explainability/
 │   │       ├── GroupExplanationChart.tsx  # Group SHAP bar chart + feature drill-down
 │   │       ├── WaterfallChart.tsx     # Individual row SHAP waterfall
 │   │       ├── ScoreHistogram.tsx     # Score distribution histogram
+│   │       ├── WordCloudPanel.tsx     # Word-frequency controls for a free-text column
+│   │       ├── WordCloud.tsx          # Word-frequency cloud/table rendering
 │   │       └── NarrativePanel.tsx     # AI narrative display + LLM provider selector
 │   ├── vite.config.ts
 │   └── package.json
@@ -64,6 +66,9 @@ generic-explainability/
 ├── data/
 │   ├── claim_fraud_training_10k.csv     # Example training data (has FRAUD_FLAG target)
 │   └── claim_fraud_scoring_sample_100.csv  # Example scoring data (no target)
+├── scripts/
+│   ├── create_scoring_sample.py   # Generate + upload a scoring dataset from holdout predictions
+│   └── prewarm_scoring_cache.sh   # Run the scoring pipeline locally to warm the dev cache
 ├── start-codespace.sh             # Local Codespace test launcher
 ├── start-app.sh                   # Custom Application container entry point
 ├── build-app.sh                   # Pre-build frontend (required before dr run deploy)
@@ -107,6 +112,7 @@ The FastAPI backend exposes these endpoints:
 | `GET /api/groups` | Group SHAP aggregations + top-feature drill-down for a filtered cohort |
 | `GET /api/row/{row_id}` | Waterfall data for a single entity |
 | `GET /api/columns` | Column metadata for building filter controls |
+| `GET /api/wordcloud` | Word-frequency counts for a free-text column, scoped to a filtered cohort |
 | `GET /api/config` | App title, subtitle, and display configuration |
 | `GET /api/llm/providers` | Available LLM providers and which have credentials |
 | `POST /api/narrative` | Generate LLM narrative for the current cohort |

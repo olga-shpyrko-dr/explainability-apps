@@ -10,7 +10,7 @@
 
 - A DataRobot deployment with SHAP prediction explanations enabled (preferred), or a project + model ID
 
-- A Data Registry dataset ID to score — use `create_scoring_sample.py` to generate one if needed
+- A Data Registry dataset ID to score — use `scripts/create_scoring_sample.py` to generate one if needed
 
 ---
 
@@ -41,7 +41,7 @@ Gather these values before running anything. How you supply them depends on the 
 | DATAROBOT_ENDPOINT | `https://app.eu.datarobot.com/api/v2` — adjust region | required |
 | DEPLOYMENT_ID | Deployment with SHAP enabled — preferred scoring path | recommended |
 | PROJECT_ID + MODEL_ID | Fallback if no deployment is available. Set only one path. | fallback |
-| SCORING_DATASET_ID | Data Registry dataset ID to score on startup. If you don't have one yet, run the helper script to generate and upload a sample: `cd backend && python create_scoring_sample.py --upload --dataset-name "Scoring Sample" --use-case-id <DEFAULT_USE_CASE_ID>` The script prints the new dataset ID to use here. | required |
+| SCORING_DATASET_ID | Data Registry dataset ID to score on startup. If you don't have one yet, run the helper script to generate and upload a sample: `python scripts/create_scoring_sample.py --upload --dataset-name "Scoring Sample" --use-case-id <DEFAULT_USE_CASE_ID>` The script prints the new dataset ID to use here. | required |
 | ROW_ID_COL | Unique row identifier column name (e.g. `CLAIM_ID`) | required |
 | OUTCOME_COL | Binary 0/1 outcome column — enables actual outcome rate in narrative | optional |
 | DEFAULT_USE_CASE_ID | Scopes the in-app dataset selector to one use case folder | optional |

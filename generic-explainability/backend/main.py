@@ -44,6 +44,7 @@ from cohort import apply_filters, cohort_profile, group_shap_summary, row_explan
 from llm_client import available_providers, default_provider
 from narrative import generate_narrative, generate_row_narrative
 from pipeline import build_tables, build_tables_from_deployment, get_dataset_name, list_use_case_datasets, load_precalculated_dataset
+from word_cloud import looks_like_free_text, word_frequencies
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -390,8 +391,10 @@ def list_columns():
                 "type": "categorical",
                 "values": sorted(series.dropna().astype(str).unique().tolist())[:200],
             })
-        else:
+        elif looks_like_free_text(col, series.dropna().astype(str)):
             result.append({"name": col, "type": "text", "n_unique": n_unique})
+        else:
+            result.append({"name": col, "type": "identifier", "n_unique": n_unique})
 
     return {"columns": result}
 
@@ -425,12 +428,39 @@ def get_groups(filters: Optional[str] = Query(None)):
     parsed = _parse_filters(filters)
     cohort_df = apply_filters(df, parsed) if parsed else df
     row_ids = cohort_df[_row_id_col()].astype(str).tolist()
+    cohort_predictions = cohort_df.set_index(
+        cohort_df[_row_id_col()].astype(str)
+    )[_prediction_col()]
     groups = group_shap_summary(
         row_ids, expl,
         row_id_col="row_id",
         top_features_per_group=_state["top_features_per_group"],
+        cohort_predictions=cohort_predictions,
     )
     return {"n_rows": len(row_ids), "groups": groups}
+
+
+# ---------------------------------------------------------------------------
+# /api/wordcloud
+# ---------------------------------------------------------------------------
+
+@app.get("/api/wordcloud")
+def get_wordcloud(
+    column: str,
+    filters: Optional[str] = Query(None),
+    min_frequency: int = 2,
+    limit: int = 100,
+):
+    df = _pop()
+    cohort_df = apply_filters(df, _parse_filters(filters))
+    if column not in cohort_df.columns:
+        raise HTTPException(status_code=404, detail=f"Column '{column}' not found")
+    words = word_frequencies(cohort_df[column].astype(str), min_frequency=min_frequency, limit=limit)
+    return {
+        "column": column,
+        "n_rows": len(cohort_df),
+        "words": [{"word": w, "count": c} for w, c in words],
+    }
 
 
 # ---------------------------------------------------------------------------

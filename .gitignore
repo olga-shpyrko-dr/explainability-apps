@@ -26,6 +26,10 @@ frontend/dist/
 # exceptions (see generic-explainability/.gitignore).
 data/*
 
+# Root-level docs/ — legacy IL-app-specific documents, kept locally only,
+# not part of the generic package (generic-explainability/docs/ is unaffected).
+/docs/
+
 # Reference notebooks & scratch files
 ref/
 

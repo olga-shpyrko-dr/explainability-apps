@@ -14,12 +14,12 @@ The output CSV contains all input feature columns + the prediction score.
 Upload it to the AI Catalog and set its ID as SCORING_DATASET_ID in .env.
 The app will then run the batch scoring pipeline on it to generate explanations.
 
-Usage:
+Usage (run from the recipe root, e.g. generic-explainability/):
   # reads PROJECT_ID, MODEL_ID, TRAINING_DATASET_ID, etc. from .env
-  python create_scoring_sample.py
+  python scripts/create_scoring_sample.py
 
   # override any setting via CLI
-  python create_scoring_sample.py \\
+  python scripts/create_scoring_sample.py \\
       --project-id 6a42312643e91bbd48762db8 \\
       --model-id   6a42323c6d777a364c9d320e \\
       --training-dataset-id 6a423013ed3aba6d87aeceeb \\
@@ -33,9 +33,13 @@ import os
 import sys
 from pathlib import Path
 
-# Load .env from the same directory as this script
+# .env lives at the recipe root or backend/ (same lookup as start-app.sh) --
+# not next to this script, which sits in scripts/.
 _HERE = Path(__file__).parent
-_dotenv = _HERE / ".env"
+_ROOT = _HERE.parent
+_dotenv = _ROOT / ".env"
+if not _dotenv.exists():
+    _dotenv = _ROOT / "backend" / ".env"
 
 try:
     from dotenv import load_dotenv  # type: ignore
@@ -68,7 +72,7 @@ def main():
         help="AI Catalog dataset ID for the training data (default: TRAINING_DATASET_ID env var "
              "or 6a423013ed3aba6d87aeceeb)",
     )
-    parser.add_argument("--output", default=str(_HERE.parent / "data" / "scoring_sample.csv"),
+    parser.add_argument("--output", default=str(_ROOT / "data" / "scoring_sample.csv"),
                         help="Output CSV path (default: ../data/scoring_sample.csv)")
     parser.add_argument("--upload", action="store_true",
                         help="Upload the CSV to DataRobot AI Catalog after saving")
