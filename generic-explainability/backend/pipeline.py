@@ -203,9 +203,6 @@ def _get_or_create_batch_prediction_deployment(
     are fast without re-running scoring.
 
     The deployment must have SHAP prediction explanations enabled.
-
-    Output is written to the AI Catalog (not localFile) so the result is
-    accessible from the deployed Custom Application container.
     """
     import datarobot as dr  # type: ignore
 
@@ -226,21 +223,16 @@ def _get_or_create_batch_prediction_deployment(
         deployment_id, catalog_dataset_id,
     )
 
-    # Use catalog dataset output — localFile writes to the DR worker filesystem,
-    # not the app container, so results are never available in deployed mode.
-    output_dataset_name = f".batch_output_{deployment_id[:8]}_{catalog_dataset_id[:8]}"
-
+    # "localFile" output does not write to any worker disk — it tells the
+    # platform to hold results for retrieval, and job.download() streams the
+    # CSV straight to this process (the app container), which is what we need.
     job = dr.BatchPredictionJob.score(
         deployment=deployment_id,
         intake_settings={
             "type": "dataset",
             "dataset": dr.Dataset.get(catalog_dataset_id),
         },
-        output_settings={
-            "type": "catalog",
-            "catalog_name": output_dataset_name,
-            "catalog_id": None,
-        },
+        output_settings={"type": "localFile"},
         num_concurrent=4,
         max_explanations=max_explanations,
         explanation_algorithm="shap",
@@ -249,33 +241,10 @@ def _get_or_create_batch_prediction_deployment(
 
     job.wait_for_completion()
 
-    # Download result from AI Catalog — try job.links first, then search by name.
-    output_dataset_id = None
-    try:
-        links = job.links or {}
-        output_dataset_id = (
-            links.get("catalogId")
-            or links.get("output", {}).get("catalogId")
-        )
-    except Exception:
-        pass
-
-    if not output_dataset_id:
-        logger.info(
-            "Catalog ID not in job links — searching AI Catalog for '%s'…",
-            output_dataset_name,
-        )
-        matches = [d for d in dr.Dataset.list() if d.name == output_dataset_name]
-        if not matches:
-            raise RuntimeError(
-                f"Batch prediction job {job.id} completed but output dataset "
-                f"'{output_dataset_name}' not found in AI Catalog."
-            )
-        output_dataset_id = matches[0].id
-
-    logger.info("Downloading batch output from catalog dataset %s…", output_dataset_id)
-    result_df = dr.Dataset.get(output_dataset_id).get_as_dataframe()
-    result_df.to_csv(local_csv, index=False)
+    logger.info("Downloading batch prediction output…")
+    with open(local_csv, "wb") as f:
+        job.download(f)
+    result_df = pd.read_csv(local_csv)
 
     _write_cache({
         "mode": "deployment",

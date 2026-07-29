@@ -83,8 +83,14 @@ background.
 
 ### "Custom Application is not ready: application failed to create"
 
-The platform health probe must get HTTP 200 from `/health` within ~2–3 minutes.
-Heavy imports (pandas, datarobot) used to block uvicorn from binding in time.
+**Root cause (typical):** DataRobot runs `pip install -r requirements.txt` *before*
+`start-app.sh`. If `requirements.txt` includes pandas/datarobot, that step alone can
+take 2+ minutes with no HTTP server listening — Pulumi then reports
+`application failed to create` at ~2–3 min.
+
+**Fix:** `requirements.txt` is lean (fastapi, uvicorn, middleware only).
+`requirements-runtime.txt` (pandas, datarobot) is installed during Docker build via
+`build-app.sh`, not at container startup.
 
 **Fix:** `start-app.sh` runs `uvicorn boot:app` — a lightweight probe server that
 responds on `/health` immediately while `main.py` loads in the background.

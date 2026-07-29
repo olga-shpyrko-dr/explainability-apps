@@ -11,7 +11,6 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
-from datarobot_asgi_middleware import DataRobotASGIMiddleware
 from fastapi import FastAPI
 from starlette.responses import JSONResponse
 
@@ -19,8 +18,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 _main_app: Any = None
-_main_lock = asyncio.Lock()
 _load_error: str | None = None
+
+
+def _add_datarobot_middleware(application: FastAPI) -> None:
+    try:
+        from datarobot_asgi_middleware import DataRobotASGIMiddleware
+
+        application.add_middleware(DataRobotASGIMiddleware, health_endpoint="/health")
+    except ImportError:
+        logger.warning("datarobot-asgi-middleware not installed — proxy paths may not work")
 
 
 async def _preload_main() -> None:
@@ -43,6 +50,10 @@ class _LazyMainASGI:
 
     async def __call__(self, scope, receive, send):
         global _main_app, _load_error
+        if scope.get("path") == "/health":
+            response = JSONResponse({"status": "healthy"})
+            await response(scope, receive, send)
+            return
         if _main_app is None:
             if _load_error:
                 response = JSONResponse(
@@ -74,12 +85,13 @@ class _LazyMainASGI:
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
+    logger.info("Probe server listening — loading full API in background")
     asyncio.create_task(_preload_main())
     yield
 
 
 app = FastAPI(title="Explainability API", lifespan=lifespan)
-app.add_middleware(DataRobotASGIMiddleware, health_endpoint="/health")
+_add_datarobot_middleware(app)
 
 
 @app.get("/health", include_in_schema=False)

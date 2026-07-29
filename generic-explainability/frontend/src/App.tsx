@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
-import type { AppConfig, CohortProfile, GroupStat, RowExplanation } from "./api";
-import { fetchAppConfig, fetchCohort, fetchGroups, fetchRow, withRetry } from "./api";
+import type { AppConfig, ColumnMeta, CohortProfile, GroupStat, RowExplanation } from "./api";
+import { fetchAppConfig, fetchCohort, fetchColumns, fetchGroups, fetchRow, withRetry } from "./api";
 import CohortFilter from "./components/CohortFilter";
 import DatasetSelector from "./components/DatasetSelector";
 import GroupExplanationChart from "./components/GroupExplanationChart";
 import InlineNarrative from "./components/InlineNarrative";
 import WaterfallChart from "./components/WaterfallChart";
 import ScoreHistogram from "./components/ScoreHistogram";
+import WordCloudPanel from "./components/WordCloudPanel";
 
 type Tab = "groups" | "row";
 
@@ -23,6 +24,7 @@ const C = {
 
 function App() {
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
+  const [columns, setColumns] = useState<ColumnMeta[]>([]);
   const [filters, setFilters] = useState<Record<string, unknown>>({});
   const [profile, setProfile] = useState<CohortProfile | null>(null);
   const [groups, setGroups] = useState<GroupStat[]>([]);
@@ -49,6 +51,12 @@ function App() {
     };
     poll();
     return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    withRetry(fetchColumns)
+      .then(setColumns)
+      .catch((e) => console.error("Failed to load /api/columns:", e));
   }, []);
 
   const refresh = useCallback(async () => {
@@ -101,12 +109,14 @@ function App() {
     setGroups([]);
     setRowData(null);
     setRowId("");
+    fetchColumns().then(setColumns).catch((e) => console.error("Failed to load /api/columns:", e));
   }, []);
 
   const entityLabel = appConfig?.entity_label ?? "row";
   const entityLabelPlural = appConfig?.entity_label_plural ?? "rows";
   const title = appConfig?.app_title ?? "Prediction Explainability";
   const subtitle = appConfig?.app_subtitle ?? "";
+  const hasTextColumns = columns.some((c) => c.type === "text");
 
   const TABS: { id: Tab; label: string }[] = [
     { id: "groups", label: "Group Explanations" },
@@ -196,6 +206,14 @@ function App() {
                 maxExplanations={appConfig?.max_explanations ?? 4}
               />
               <InlineNarrative mode="group" filters={filters} nRows={profile?.n_rows ?? 0} />
+            </div>
+          )}
+
+          {/* Word insights — same cohort as Group Explanations, stacked below it */}
+          {tab === "groups" && hasTextColumns && (
+            <div style={cardStyle}>
+              <div style={cardEyebrow}>TEXT WORD FREQUENCY</div>
+              <WordCloudPanel columns={columns} filters={filters} />
             </div>
           )}
 

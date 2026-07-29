@@ -138,11 +138,16 @@ export interface RowExplanation {
 
 export interface ColumnMeta {
   name: string;
-  type: "numeric" | "categorical" | "text";
+  type: "numeric" | "categorical" | "text" | "identifier";
   min?: number;
   max?: number;
   values?: string[];
   n_unique?: number;
+}
+
+export interface WordFrequency {
+  word: string;
+  count: number;
 }
 
 export interface LLMProviderInfo {
@@ -179,6 +184,13 @@ export const fetchRow = (rowId: string) =>
 
 export const fetchColumns = () =>
   api.get<{ columns: ColumnMeta[] }>("api/columns").then((r) => r.data.columns);
+
+export const fetchWordCloud = (column: string, filters: Record<string, unknown>, minFrequency = 2) =>
+  api
+    .get<{ column: string; n_rows: number; words: WordFrequency[] }>("api/wordcloud", {
+      params: { column, filters: JSON.stringify(filters), min_frequency: minFrequency },
+    })
+    .then((r) => r.data);
 
 export const fetchLLMProviders = () =>
   api.get<LLMProvidersResponse>("api/llm/providers").then((r) => r.data);

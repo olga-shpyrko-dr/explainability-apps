@@ -21,8 +21,14 @@ generic-explainability/backend/.batch_output_cache.csv
 frontend/node_modules/
 frontend/dist/
 
-# Data — not committed (contains customer/training data)
-data/
+# Data — not committed by default (may contain customer/training data).
+# Specific public/synthetic example files are allowed via nested .gitignore
+# exceptions (see generic-explainability/.gitignore).
+data/*
+
+# Root-level docs/ — legacy IL-app-specific documents, kept locally only,
+# not part of the generic package (generic-explainability/docs/ is unaffected).
+/docs/
 
 # Reference notebooks & scratch files
 ref/

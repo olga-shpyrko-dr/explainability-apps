@@ -7,6 +7,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 DIST="${ROOT}/frontend/dist/index.html"
 
+chmod +x "${ROOT}/start-app.sh" "${ROOT}/build-app.sh" 2>/dev/null || true
+
 if [[ ! -f "${DIST}" ]]; then
   cd "${ROOT}/frontend"
   if [[ ! -f package-lock.json ]]; then
@@ -26,14 +28,17 @@ if [[ ! -f "${DIST}" ]]; then
   exit 1
 fi
 
-# Install Python deps during Docker image build so container startup does not
-# spend minutes on pip install before the /health probe (af-component pattern).
-if [[ -f "${ROOT}/requirements.txt" ]]; then
-  echo "Installing Python dependencies into application image…"
-  python3 -m pip install --no-cache-dir -r "${ROOT}/requirements.txt"
-  if [[ -f "${ROOT}/requirements-llm.txt" ]]; then
-    python3 -m pip install --no-cache-dir -r "${ROOT}/requirements-llm.txt"
-  fi
+if [[ ! -f "${ROOT}/backend/boot.py" ]]; then
+  echo "ERROR: backend/boot.py missing — git pull the latest deploy fixes." >&2
+  exit 1
 fi
+
+# Install ALL Python deps into the image (platform only installs lean requirements.txt).
+for req in requirements.txt requirements-runtime.txt requirements-llm.txt; do
+  if [[ -f "${ROOT}/${req}" ]]; then
+    echo "Installing ${req} into application image…"
+    python3 -m pip install --no-cache-dir -r "${ROOT}/${req}"
+  fi
+done
 
 echo "Done — frontend/dist ready and Python deps installed."

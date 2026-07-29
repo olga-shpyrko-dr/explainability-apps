@@ -4,7 +4,15 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+echo "=== start-app.sh ===" >&2
+echo "PWD=$(pwd)" >&2
+echo "Python: $(command -v python3) ($(python3 --version 2>&1))" >&2
+
 # Local .env (Codespace); in Custom Apps runtime parameters are injected as env vars.
+# Preserve a platform-injected DATAROBOT_API_TOKEN across the sourcing below so an
+# empty placeholder line in a copied .env.template can't silently blank it out.
+_injected_token="${DATAROBOT_API_TOKEN:-}"
+
 if [[ -f .env ]]; then
   set -a
   # shellcheck disable=SC1091
@@ -15,6 +23,10 @@ elif [[ -f backend/.env ]]; then
   # shellcheck disable=SC1091
   source backend/.env
   set +a
+fi
+
+if [[ -z "${DATAROBOT_API_TOKEN:-}" && -n "$_injected_token" ]]; then
+  export DATAROBOT_API_TOKEN="$_injected_token"
 fi
 
 # Map MLOPS_RUNTIME_PARAM_* → app env vars (Custom Application convention).
@@ -41,9 +53,13 @@ if [[ ! -f frontend/dist/index.html ]]; then
   exit 1
 fi
 
-echo "Python $(python3 --version 2>&1)"
-echo "Starting explainability API on 0.0.0.0:8080 (boot:app probe server)…"
+if [[ ! -f backend/boot.py ]]; then
+  echo "ERROR: backend/boot.py not found — run 'git pull' for the latest deploy fixes." >&2
+  exit 1
+fi
+
 export PYTHONUNBUFFERED=1
+echo "Starting uvicorn boot:app on 0.0.0.0:8080…" >&2
 
 cd backend
 exec python3 -m uvicorn boot:app \
