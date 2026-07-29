@@ -1,0 +1,5 @@
+# Optional — only for scripts/export_to_sql.py (Power BI / SQL Server path).
+# NOT installed in the Custom Application container.
+sqlalchemy>=2.0
+pyodbc
+openpyxl

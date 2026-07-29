@@ -91,6 +91,7 @@ EXCLUDE_PATTERNS = [
         r".*\.git/.*",
         r".*\.env$",
         r".*\.prediction_dataset_cache\.json",
+        r".*\.batch_output_cache\.csv",
     ]
 ]
 
@@ -105,6 +106,12 @@ __all__ = [
 def get_explainability_app_files() -> list[tuple[str, str]]:
     """Bundle the recipe root (parent of infra/) for upload to ApplicationSource."""
     application_path = project_dir.parent
+    dist_index = application_path / "frontend" / "dist" / "index.html"
+    if not dist_index.exists():
+        raise FileNotFoundError(
+            f"frontend/dist/index.html not found under {application_path}. "
+            "Run ./build-app.sh (or ./deploy.sh) before dr run deploy."
+        )
     source_files: list[tuple[str, str]] = []
     for dirpath, _dirnames, filenames in os.walk(application_path, followlinks=True):
         for filename in filenames:
@@ -178,7 +185,12 @@ explainability_app = pulumi_datarobot.CustomApplication(
     allow_auto_stopping=True,
     resources=explainability_app_source.resources,
     required_key_scope_level=explainability_app_source.required_key_scope_level,
-    opts=pulumi.ResourceOptions(depends_on=[explainability_app_source]),
+    opts=pulumi.ResourceOptions(
+        depends_on=[explainability_app_source],
+        # First deploy installs Python deps in the image and may take several minutes
+        # before /health responds; default provider wait is too short on XL bundles.
+        custom_timeouts=pulumi.CustomTimeouts(create="30m", update="30m"),
+    ),
 )
 
 pulumi.export("DATAROBOT_APPLICATION_ID", explainability_app.id)

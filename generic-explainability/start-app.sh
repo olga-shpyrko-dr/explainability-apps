@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Production entry point for DataRobot Custom Applications.
-# Frontend MUST be pre-built (./build-app.sh) before deploy.
-# Python deps are installed automatically from requirements.txt by the platform.
+# Frontend MUST be pre-built (./build-app.sh or ./deploy.sh) before deploy.
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Local .env (Codespace); in Custom Apps runtime parameters are injected as env vars.
 if [[ -f .env ]]; then
   set -a
   # shellcheck disable=SC1091
@@ -17,17 +17,36 @@ elif [[ -f backend/.env ]]; then
   set +a
 fi
 
-if [[ ! -d frontend/dist ]]; then
-  echo "ERROR: frontend/dist not found. Run ./build-app.sh before deploying." >&2
+# Map MLOPS_RUNTIME_PARAM_* → app env vars (Custom Application convention).
+_runtime_keys=(
+  DATA_SOURCE CSV_PATH DATAROBOT_ENDPOINT
+  DEPLOYMENT_ID PROJECT_ID MODEL_ID
+  SCORING_DATASET_ID TRAINING_DATASET_ID DEFAULT_USE_CASE_ID
+  ROW_ID_COL PREDICTION_COL OUTCOME_COL MAX_EXPLANATIONS
+  APP_TITLE APP_SUBTITLE DATASET_DISPLAY_NAME
+  DR_GATEWAY_MODEL DR_LLM_DEPLOYMENT_ID
+  AZURE_OPENAI_API_BASE AZURE_OPENAI_API_VERSION AZURE_OPENAI_DEPLOYMENT_NAME
+  ANTHROPIC_MODEL
+)
+for key in "${_runtime_keys[@]}"; do
+  mlops_var="MLOPS_RUNTIME_PARAM_${key}"
+  if [[ -n "${!mlops_var:-}" ]]; then
+    export "${key}=${!mlops_var}"
+  fi
+done
+
+if [[ ! -f frontend/dist/index.html ]]; then
+  echo "ERROR: frontend/dist/index.html not found." >&2
+  echo "Run ./build-app.sh (or ./deploy.sh) before dr run deploy." >&2
   exit 1
 fi
 
-echo "Installing Python dependencies…"
-python3 -m pip install --quiet -r requirements.txt
+echo "Python $(python3 --version 2>&1)"
+echo "Starting explainability API on 0.0.0.0:8080 (boot:app probe server)…"
+export PYTHONUNBUFFERED=1
 
-echo "Starting explainability API on 0.0.0.0:8080…"
 cd backend
-exec python3 -m uvicorn main:app \
+exec python3 -m uvicorn boot:app \
   --host 0.0.0.0 \
   --port 8080 \
   --proxy-headers \

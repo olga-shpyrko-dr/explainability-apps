@@ -20,8 +20,10 @@ as runtime parameters (not just the barebones Pulumi params from base).
 3. Build the frontend **before** deploying (the Custom App container is Python-only):
 
    ```bash
-   ./build-app.sh
+   ./deploy.sh
    ```
+
+   Or manually: `./build-app.sh` then `dr run deploy`.
 
 4. Configure **all** app parameters interactively:
 
@@ -34,7 +36,7 @@ as runtime parameters (not just the barebones Pulumi params from base).
    - `.datarobot/cli/explainability-app.yaml` — scoring, columns, LLM, metadata
    - `.env.template` — variable discovery for `dr dotenv validate`
 
-5. Deploy:
+5. Deploy (if you did not use `./deploy.sh` in step 3):
 
    ```bash
    dr run deploy
@@ -53,6 +55,62 @@ as runtime parameters (not just the barebones Pulumi params from base).
 | `DR_GATEWAY_MODEL` | recommended | At least one LLM provider for AI narrative |
 
 See `.datarobot/cli/explainability-app.yaml` for the full list and help text.
+
+## Troubleshooting deploy failures
+
+### Pulumi fails but UI shows "Initializing…"
+
+The first deploy can take **5–10 minutes** (Docker image build + pip install + container
+boot). Pulumi may report failure while DataRobot is still starting the app in the
+background.
+
+1. **Wait** — refresh **Registry → Applications**; status should move from
+   `Initializing` → `Running`.
+2. **Open the app URL** once Running (batch scoring then takes another 2–5 min on first load).
+3. **Sync Pulumi** after the app is Running:
+
+   ```bash
+   export DATAROBOT_TIMEOUT_MINUTES=60
+   dr run infra:refresh -- -y
+   ```
+
+4. **Redeploy with longer timeout** (included in `./deploy.sh`):
+
+   ```bash
+   export DATAROBOT_TIMEOUT_MINUTES=60
+   ./deploy.sh
+   ```
+
+### "Custom Application is not ready: application failed to create"
+
+The platform health probe must get HTTP 200 from `/health` within ~2–3 minutes.
+Heavy imports (pandas, datarobot) used to block uvicorn from binding in time.
+
+**Fix:** `start-app.sh` runs `uvicorn boot:app` — a lightweight probe server that
+responds on `/health` immediately while `main.py` loads in the background.
+
+1. **Test startup locally in the Codespace** (fastest way to see the real error):
+
+   ```bash
+   ./build-app.sh
+   bash -x ./start-app.sh
+   ```
+
+2. **Check Custom Application logs** in DataRobot UI:
+   Registry → Custom Applications → your app → **Logs**
+
+3. **Common causes:**
+   - `frontend/dist` missing → run `./deploy.sh` (builds frontend then deploys)
+   - Redundant `pip install` in `start-app.sh` → removed; platform installs `requirements.txt`
+   - `pyodbc` / SQL deps in `requirements.txt` → use lean `requirements.txt` only
+   - Missing env vars → run `dr dotenv validate`
+
+4. **Refresh a stuck stack:**
+
+   ```bash
+   dr run infra:refresh -- -y
+   dr run deploy
+   ```
 
 ## Keeping prompts in sync
 

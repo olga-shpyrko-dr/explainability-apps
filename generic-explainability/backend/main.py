@@ -51,79 +51,80 @@ logger = logging.getLogger(__name__)
 _state: dict[str, Any] = {}
 
 
+async def _bootstrap() -> None:
+    try:
+        cfg = get_settings()
+        profile_cfg = load_profile_config()
+        narrative_cfg = load_narrative_config()
+
+        _state.update({
+            "profile_cfg": profile_cfg,
+            "narrative_cfg": narrative_cfg,
+            "cfg": cfg,
+            "row_id_col": cfg.row_id_col,
+            "outcome_col": cfg.outcome_col,
+            "app_title": cfg.app_title,
+            "app_subtitle": cfg.app_subtitle,
+            "max_explanations": cfg.max_explanations,
+            "score_histogram_bins": cfg.score_histogram_bins,
+            "top_features_per_group": cfg.top_features_per_group,
+            "cohort_warning_min_rows": cfg.cohort_warning_min_rows,
+            "narrative_max_tokens": cfg.narrative_max_tokens,
+            "narrative_groups_in_prompt": cfg.narrative_groups_in_prompt,
+            "narrative_features_per_group": cfg.narrative_features_per_group,
+            "data_source": cfg.data_source,
+            "default_use_case_id": cfg.default_use_case_id,
+        })
+
+        logger.info("Building data tables (mode=%s)…", cfg.data_source)
+        loop = asyncio.get_running_loop()
+        scored_pop, expl_long, prediction_col = await loop.run_in_executor(
+            None, lambda: build_tables(cfg)
+        )
+        validate_columns_against_profile(list(scored_pop.columns), profile_cfg)
+
+        default_dataset_name: Optional[str] = cfg.dataset_display_name
+        if not default_dataset_name and cfg.data_source == "datarobot" and cfg.scoring_dataset_id:
+            try:
+                default_dataset_name = get_dataset_name(cfg.scoring_dataset_id)
+            except Exception:
+                default_dataset_name = cfg.scoring_dataset_id
+
+        _state.update({
+            "scored_population": scored_pop,
+            "explanation_long": expl_long,
+            "prediction_col": prediction_col,
+            "current_dataset_id": cfg.scoring_dataset_id,
+            "current_dataset_name": default_dataset_name,
+            "ready": True,
+        })
+        logger.info(
+            "Ready. scored_population=%s  explanation_long=%s  prediction_col=%s",
+            scored_pop.shape, expl_long.shape, prediction_col,
+        )
+    except Exception as exc:
+        logger.error("Startup failed: %s", exc, exc_info=True)
+        _state["init_error"] = str(exc)
+
+
+def kickoff_bootstrap() -> None:
+    """Start background data load. Safe to call from boot.py or main lifespan."""
+    if _state.get("_bootstrap_started"):
+        return
+    _state["_bootstrap_started"] = True
+    _state["ready"] = False
+    loop = asyncio.get_running_loop()
+    loop.create_task(_bootstrap())
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    cfg = get_settings()
-
-    # Load JSON configs synchronously (fast, fail-fast on bad config)
-    profile_cfg = load_profile_config()
-    narrative_cfg = load_narrative_config()
-
-    # Populate config-derived state immediately so the app is ready to accept
-    # health-check requests before the (potentially slow) data load completes.
-    _state.update({
-        "ready": False,
-        "profile_cfg": profile_cfg,
-        "narrative_cfg": narrative_cfg,
-        "cfg": cfg,
-        "row_id_col": cfg.row_id_col,
-        "outcome_col": cfg.outcome_col,
-        "app_title": cfg.app_title,
-        "app_subtitle": cfg.app_subtitle,
-        "max_explanations": cfg.max_explanations,
-        "score_histogram_bins": cfg.score_histogram_bins,
-        "top_features_per_group": cfg.top_features_per_group,
-        "cohort_warning_min_rows": cfg.cohort_warning_min_rows,
-        "narrative_max_tokens": cfg.narrative_max_tokens,
-        "narrative_groups_in_prompt": cfg.narrative_groups_in_prompt,
-        "narrative_features_per_group": cfg.narrative_features_per_group,
-        "data_source": cfg.data_source,
-        "default_use_case_id": cfg.default_use_case_id,
-    })
-
-    async def _load_data() -> None:
-        try:
-            logger.info("Building data tables (mode=%s)…", cfg.data_source)
-            loop = asyncio.get_running_loop()
-            scored_pop, expl_long, prediction_col = await loop.run_in_executor(
-                None, lambda: build_tables(cfg)
-            )
-            validate_columns_against_profile(list(scored_pop.columns), profile_cfg)
-
-            default_dataset_name: Optional[str] = cfg.dataset_display_name
-            if not default_dataset_name and cfg.data_source == "datarobot" and cfg.scoring_dataset_id:
-                try:
-                    default_dataset_name = get_dataset_name(cfg.scoring_dataset_id)
-                except Exception:
-                    default_dataset_name = cfg.scoring_dataset_id
-
-            _state.update({
-                "scored_population": scored_pop,
-                "explanation_long": expl_long,
-                "prediction_col": prediction_col,
-                "current_dataset_id": cfg.scoring_dataset_id,
-                "current_dataset_name": default_dataset_name,
-                "ready": True,
-            })
-            logger.info(
-                "Ready. scored_population=%s  explanation_long=%s  prediction_col=%s",
-                scored_pop.shape, expl_long.shape, prediction_col,
-            )
-        except Exception as exc:
-            logger.error("Data loading failed: %s", exc, exc_info=True)
-            _state["init_error"] = str(exc)
-
-    asyncio.create_task(_load_data())
+    kickoff_bootstrap()
     yield
     _state.clear()
 
 
 app = FastAPI(title="Explainability API", lifespan=lifespan)
-
-# Platform liveness/readiness probe — must respond 200 before data scoring finishes.
-@app.get("/health", include_in_schema=False)
-def platform_health():
-    return {"status": "healthy"}
 
 app.add_middleware(
     CORSMiddleware,

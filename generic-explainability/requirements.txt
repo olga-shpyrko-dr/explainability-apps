@@ -1,16 +1,12 @@
+# Runtime dependencies for the explainability Custom Application.
+# Installed by DataRobot during application setup AND by build-app.sh in the image.
+# Keep lean — heavy optional deps live in requirements-llm.txt.
 fastapi>=0.115
 uvicorn[standard]>=0.30
 datarobot>=3.5
+datarobot-asgi-middleware>=0.2.0
 pandas>=2.0
-openpyxl
-anthropic>=0.28
-litellm>=1.40
 python-dotenv
 pydantic-settings>=2.0
-email-validator>=2.0
 numpy
-# SQL Server export (scripts/export_to_sql.py)
-sqlalchemy>=2.0
-pyodbc
-
 aiofiles>=23.0

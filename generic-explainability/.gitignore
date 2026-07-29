@@ -5,6 +5,7 @@
 __pycache__/
 *.py[cod]
 .prediction_dataset_cache.json
+.batch_output_cache.csv
 data/scoring_sample.csv
 data/*.csv
 node_modules/
