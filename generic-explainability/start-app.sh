@@ -9,6 +9,10 @@ echo "PWD=$(pwd)" >&2
 echo "Python: $(command -v python3) ($(python3 --version 2>&1))" >&2
 
 # Local .env (Codespace); in Custom Apps runtime parameters are injected as env vars.
+# Preserve a platform-injected DATAROBOT_API_TOKEN across the sourcing below so an
+# empty placeholder line in a copied .env.template can't silently blank it out.
+_injected_token="${DATAROBOT_API_TOKEN:-}"
+
 if [[ -f .env ]]; then
   set -a
   # shellcheck disable=SC1091
@@ -19,6 +23,10 @@ elif [[ -f backend/.env ]]; then
   # shellcheck disable=SC1091
   source backend/.env
   set +a
+fi
+
+if [[ -z "${DATAROBOT_API_TOKEN:-}" && -n "$_injected_token" ]]; then
+  export DATAROBOT_API_TOKEN="$_injected_token"
 fi
 
 # Map MLOPS_RUNTIME_PARAM_* → app env vars (Custom Application convention).

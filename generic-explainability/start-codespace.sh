@@ -12,6 +12,10 @@ cd "$(dirname "$0")"
 
 APP_PORT="${APP_PORT:-8501}"
 
+# Preserve a platform-injected DATAROBOT_API_TOKEN (Codespaces auto-inject it) so
+# an empty placeholder line in a copied .env.template can't silently blank it out.
+_injected_token="${DATAROBOT_API_TOKEN:-}"
+
 if [[ -f .env ]]; then
   set -a
   # shellcheck disable=SC1091
@@ -22,6 +26,10 @@ elif [[ -f backend/.env ]]; then
   # shellcheck disable=SC1091
   source backend/.env
   set +a
+fi
+
+if [[ -z "${DATAROBOT_API_TOKEN:-}" && -n "$_injected_token" ]]; then
+  export DATAROBOT_API_TOKEN="$_injected_token"
 fi
 
 chmod +x build-app.sh
