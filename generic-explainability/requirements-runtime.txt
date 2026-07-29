@@ -1,0 +1,4 @@
+# Installed during Docker image build (build-app.sh) — NOT by platform pip at startup.
+datarobot>=3.5
+pandas>=2.0
+numpy

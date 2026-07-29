@@ -36,10 +36,16 @@ echo ""
 echo "Installing Python dependencies…"
 if [[ -x .venv/bin/pip ]]; then
   .venv/bin/pip install -q -r requirements.txt
+  .venv/bin/pip install -q -r requirements-runtime.txt
+  [[ -f requirements-llm.txt ]] && .venv/bin/pip install -q -r requirements-llm.txt
 elif command -v uv >/dev/null 2>&1; then
   uv pip install -r requirements.txt
+  uv pip install -r requirements-runtime.txt
+  [[ -f requirements-llm.txt ]] && uv pip install -r requirements-llm.txt
 else
   python3 -m pip install -q -r requirements.txt
+  python3 -m pip install -q -r requirements-runtime.txt
+  [[ -f requirements-llm.txt ]] && python3 -m pip install -q -r requirements-llm.txt
 fi
 
 echo ""

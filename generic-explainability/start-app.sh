@@ -4,6 +4,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+echo "=== start-app.sh ===" >&2
+echo "PWD=$(pwd)" >&2
+echo "Python: $(command -v python3) ($(python3 --version 2>&1))" >&2
+
 # Local .env (Codespace); in Custom Apps runtime parameters are injected as env vars.
 if [[ -f .env ]]; then
   set -a
@@ -41,9 +45,13 @@ if [[ ! -f frontend/dist/index.html ]]; then
   exit 1
 fi
 
-echo "Python $(python3 --version 2>&1)"
-echo "Starting explainability API on 0.0.0.0:8080 (boot:app probe server)…"
+if [[ ! -f backend/boot.py ]]; then
+  echo "ERROR: backend/boot.py not found — run 'git pull' for the latest deploy fixes." >&2
+  exit 1
+fi
+
 export PYTHONUNBUFFERED=1
+echo "Starting uvicorn boot:app on 0.0.0.0:8080…" >&2
 
 cd backend
 exec python3 -m uvicorn boot:app \
