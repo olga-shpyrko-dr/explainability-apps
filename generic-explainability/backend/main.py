@@ -120,6 +120,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Explainability API", lifespan=lifespan)
 
+# Platform liveness/readiness probe — must respond 200 before data scoring finishes.
+@app.get("/health", include_in_schema=False)
+def platform_health():
+    return {"status": "healthy"}
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

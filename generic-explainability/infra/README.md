@@ -17,7 +17,13 @@ as runtime parameters (not just the barebones Pulumi params from base).
 2. Copy or merge `infra/infra/explainability_app.py` into the generated
    `infra/infra/` package (this repo already includes the file — skip if present).
 
-3. Configure **all** app parameters interactively:
+3. Build the frontend **before** deploying (the Custom App container is Python-only):
+
+   ```bash
+   ./build-app.sh
+   ```
+
+4. Configure **all** app parameters interactively:
 
    ```bash
    dr dotenv setup
@@ -28,7 +34,7 @@ as runtime parameters (not just the barebones Pulumi params from base).
    - `.datarobot/cli/explainability-app.yaml` — scoring, columns, LLM, metadata
    - `.env.template` — variable discovery for `dr dotenv validate`
 
-4. Deploy:
+5. Deploy:
 
    ```bash
    dr run deploy

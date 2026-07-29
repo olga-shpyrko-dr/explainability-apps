@@ -66,8 +66,8 @@ STRING_RUNTIME_ENV_VARS: Final[tuple[str, ...]] = (
 )
 
 # Stored as DataRobot credentials (not plain string runtime params).
+# DATAROBOT_API_TOKEN is omitted — the platform injects it automatically in Custom Apps.
 SECRET_RUNTIME_ENV_VARS: Final[tuple[str, ...]] = (
-    "DATAROBOT_API_TOKEN",
     "AZURE_OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
 )
@@ -77,7 +77,6 @@ EXCLUDE_PATTERNS = [
     for pattern in [
         r"metadata\.yaml",
         r".*node_modules/.*",
-        r".*frontend/dist/.*",
         r".*\.venv/.*",
         r".*__pycache__/.*",
         r".*\.pytest_cache/.*",
@@ -166,6 +165,7 @@ explainability_app_source = pulumi_datarobot.ApplicationSource(
     runtime_parameter_values=explainability_app_runtime_parameters,
     resources=pulumi_datarobot.ApplicationSourceResourcesArgs(
         resource_label=CustomAppResourceBundles.CPU_XL.value.id,
+        health_endpoint_path="/health",
     ),
     required_key_scope_level="",
     **explainability_app_source_args,

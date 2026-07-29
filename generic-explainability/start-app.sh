@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Production entry point for DataRobot Custom Applications.
-# Builds the React frontend, installs Python deps, and serves FastAPI on :8080.
+# Frontend MUST be pre-built (./build-app.sh) before deploy — the Python
+# Applications Base image does not include Node.js/npm.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -14,48 +15,18 @@ if [[ -f .env ]]; then
   set +a
 fi
 
+if [[ ! -d frontend/dist ]]; then
+  echo "ERROR: frontend/dist not found. Run ./build-app.sh before deploying." >&2
+  exit 1
+fi
+
 echo "Installing Python dependencies…"
-if command -v uv >/dev/null 2>&1; then
-  uv pip install -r requirements.txt --system 2>/dev/null || uv pip install -r requirements.txt
-else
-  pip install -r requirements.txt
-fi
+python3 -m pip install --quiet -r requirements.txt
 
-echo "Building React frontend…"
-(
-  cd frontend
-  if [[ ! -d node_modules ]]; then
-    npm ci --no-audit --no-fund
-  fi
-  npm run build
-)
-
-# Worker count for uvicorn (same heuristic as af-component-fastapi-backend)
-if [[ -f /sys/fs/cgroup/cpu.max ]] && ! grep -q "max" /sys/fs/cgroup/cpu.max; then
-  read -r max period < /sys/fs/cgroup/cpu.max
-  workers=$((max / period))
-else
-  workers=$(nproc 2>/dev/null || echo 2)
-fi
-workers=$((workers * 2 + 1))
-if [[ $workers -lt 2 ]]; then
-  workers=2
-fi
-
-echo "Starting explainability API with ${workers} workers on :8080…"
+echo "Starting explainability API on :8080 (single worker)…"
 cd backend
-if command -v uv >/dev/null 2>&1; then
-  exec uv run uvicorn main:app \
-    --workers "$workers" \
-    --host 0.0.0.0 \
-    --port 8080 \
-    --proxy-headers \
-    --timeout-keep-alive 300
-else
-  exec uvicorn main:app \
-    --workers "$workers" \
-    --host 0.0.0.0 \
-    --port 8080 \
-    --proxy-headers \
-    --timeout-keep-alive 300
-fi
+exec python3 -m uvicorn main:app \
+  --host 0.0.0.0 \
+  --port 8080 \
+  --proxy-headers \
+  --timeout-keep-alive 300
