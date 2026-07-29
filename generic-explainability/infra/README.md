@@ -58,6 +58,29 @@ See `.datarobot/cli/explainability-app.yaml` for the full list and help text.
 
 ## Troubleshooting deploy failures
 
+### Pulumi fails but UI shows "Initializing…"
+
+The first deploy can take **5–10 minutes** (Docker image build + pip install + container
+boot). Pulumi may report failure while DataRobot is still starting the app in the
+background.
+
+1. **Wait** — refresh **Registry → Applications**; status should move from
+   `Initializing` → `Running`.
+2. **Open the app URL** once Running (batch scoring then takes another 2–5 min on first load).
+3. **Sync Pulumi** after the app is Running:
+
+   ```bash
+   export DATAROBOT_TIMEOUT_MINUTES=60
+   dr run infra:refresh -- -y
+   ```
+
+4. **Redeploy with longer timeout** (included in `./deploy.sh`):
+
+   ```bash
+   export DATAROBOT_TIMEOUT_MINUTES=60
+   ./deploy.sh
+   ```
+
 ### "Custom Application is not ready: application failed to create"
 
 1. **Test startup locally in the Codespace** (fastest way to see the real error):

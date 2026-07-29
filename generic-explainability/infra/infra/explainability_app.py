@@ -185,7 +185,12 @@ explainability_app = pulumi_datarobot.CustomApplication(
     allow_auto_stopping=True,
     resources=explainability_app_source.resources,
     required_key_scope_level=explainability_app_source.required_key_scope_level,
-    opts=pulumi.ResourceOptions(depends_on=[explainability_app_source]),
+    opts=pulumi.ResourceOptions(
+        depends_on=[explainability_app_source],
+        # First deploy installs Python deps in the image and may take several minutes
+        # before /health responds; default provider wait is too short on XL bundles.
+        custom_timeouts=pulumi.CustomTimeouts(create="30m", update="30m"),
+    ),
 )
 
 pulumi.export("DATAROBOT_APPLICATION_ID", explainability_app.id)
