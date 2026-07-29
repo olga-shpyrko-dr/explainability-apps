@@ -1,4 +1,4 @@
-import { defineConfig, type UserConfig } from "vite";
+import { defineConfig, type ProxyOptions } from "vite";
 import react from "@vitejs/plugin-react";
 
 const DEV_PORT = Number(process.env.VITE_DEV_PORT || process.env.PORT || 5173);
@@ -39,12 +39,8 @@ function notebookDevBase(): string | null {
   return `/notebook-sessions/${notebookId}/ports/${DEV_PORT}/`;
 }
 
-function buildApiProxy(notebookBase: string | null): UserConfig["server"] extends infer S
-  ? S extends { proxy?: infer P }
-    ? P
-    : Record<string, string | object>
-  : Record<string, string | object> {
-  const proxy: Record<string, string | object> = {
+function buildApiProxy(notebookBase: string | null): Record<string, string | ProxyOptions> {
+  const proxy: Record<string, string | ProxyOptions> = {
     "/api": {
       target: "http://127.0.0.1:8000",
       changeOrigin: true,
@@ -67,36 +63,35 @@ function buildApiProxy(notebookBase: string | null): UserConfig["server"] extend
 const listenOptions = {
   port: DEV_PORT,
   strictPort: true,
-  allowedHosts: [".datarobot.com", "localhost"] as const,
-  host: true as const,
+  allowedHosts: [".datarobot.com", "localhost"],
+  host: true,
 };
 
-export default defineConfig(({ command }) => {
-  const notebookBase = command === "serve" ? notebookDevBase() : null;
-  const base = command === "build" || command === "preview" ? "./" : (notebookBase ?? "/");
+export default defineConfig(({ command, isPreview }) => {
+  const isDevServer = command === "serve" && !isPreview;
+  const notebookBase = isDevServer ? notebookDevBase() : null;
+  const base = command === "build" || isPreview ? "./" : (notebookBase ?? "/");
   const proxy = buildApiProxy(notebookBase);
 
-  if (command === "serve") {
+  if (isDevServer) {
     console.log(
       `[vite] base=${base} NOTEBOOK_ID=${process.env.NOTEBOOK_ID ?? "unset"} ` +
         `(use 'npm run preview' in Codespaces if modules 404 at domain root)`
     );
   }
 
-  const server: Record<string, unknown> = {
+  const server = {
     ...listenOptions,
     proxy,
+    ...(notebookBase
+      ? { origin: `${datarobotOrigin()}${notebookBase.replace(/\/$/, "")}` }
+      : {}),
   };
-  if (notebookBase) {
-    server.origin = `${datarobotOrigin()}${notebookBase.replace(/\/$/, "")}`;
-  }
 
   return {
     plugins: [react()],
     base,
     server,
-    // vite preview — recommended for Codespace testing (serves dist/, no /src/ requests).
-    // Requires backend on :8000 for /api proxy.
     preview: {
       ...listenOptions,
       proxy,
