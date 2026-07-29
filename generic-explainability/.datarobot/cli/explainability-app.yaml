@@ -1,0 +1,183 @@
+---
+# App-specific prompts for `dr dotenv setup` / `dr dotenv validate`.
+# Merged with af-component-base's `.datarobot/cli/base.yml` (Pulumi passphrase, use case, OTEL).
+#
+# After setup, wire these same env vars as ApplicationSource runtime_parameter_values
+# in infra/infra/explainability_app.py (see that file).
+
+root:
+  # -------------------------------------------------------------------------
+  # Data source
+  # -------------------------------------------------------------------------
+  - env: DATA_SOURCE
+    type: string
+    default: datarobot
+    optional: true
+    help: |
+      Data source for scoring: "datarobot" (default) scores via DataRobot APIs;
+      "csv" reads a pre-scored local CSV with EXPLANATION_N_* columns.
+
+  - env: CSV_PATH
+    type: string
+    optional: true
+    help: |
+      Required when DATA_SOURCE=csv. Path to a pre-scored CSV relative to the app root
+      (e.g. data/scored_population.csv).
+
+  # -------------------------------------------------------------------------
+  # DataRobot credentials (required for DATA_SOURCE=datarobot)
+  # -------------------------------------------------------------------------
+  - env: DATAROBOT_API_TOKEN
+    type: secret_string
+    optional: false
+    help: |
+      DataRobot API token. Auto-populated when you are authenticated via `dr auth login`.
+      In a deployed Custom Application the platform also injects this automatically.
+
+  - env: DATAROBOT_ENDPOINT
+    type: string
+    default: https://app.datarobot.com/api/v2
+    optional: true
+    help: |
+      DataRobot API endpoint for your region (e.g. https://app.eu.datarobot.com/api/v2).
+
+  # -------------------------------------------------------------------------
+  # Scoring pipeline — DEPLOYMENT_ID preferred; PROJECT_ID+MODEL_ID is fallback
+  # -------------------------------------------------------------------------
+  - env: DEPLOYMENT_ID
+    type: string
+    optional: true
+    help: |
+      Preferred scoring path. Deployment ID with SHAP prediction explanations enabled.
+      When set, the app runs a BatchPredictionJob (faster, no PE initialisation).
+      Leave empty only if you will use PROJECT_ID + MODEL_ID instead.
+
+  - env: PROJECT_ID
+    type: string
+    optional: true
+    help: |
+      Fallback scoring path (Option B). Project ID — only needed when DEPLOYMENT_ID is not set.
+
+  - env: MODEL_ID
+    type: string
+    optional: true
+    help: |
+      Fallback scoring path (Option B). Model ID — only needed when DEPLOYMENT_ID is not set.
+
+  - env: SCORING_DATASET_ID
+    type: string
+    optional: false
+    help: |
+      AI Catalog dataset ID to score on startup. Required for datarobot mode.
+
+  - env: TRAINING_DATASET_ID
+    type: string
+    optional: true
+    help: |
+      Optional training dataset ID. When set, enables actual outcome rate in the AI narrative.
+
+  # -------------------------------------------------------------------------
+  # Use case (scopes in-app dataset selector)
+  # -------------------------------------------------------------------------
+  - env: DEFAULT_USE_CASE_ID
+    type: string
+    optional: true
+    help: |
+      Optional Use Case ID. Scopes the in-app dataset selector to one folder.
+      If omitted, DATAROBOT_USE_CASE_ID from the Custom Application is used when present.
+
+  # -------------------------------------------------------------------------
+  # Column config
+  # -------------------------------------------------------------------------
+  - env: ROW_ID_COL
+    type: string
+    default: id
+    optional: false
+    help: |
+      Unique row identifier column name in the scoring dataset (e.g. TRANSACTION_ID, Policy_Number).
+
+  - env: PREDICTION_COL
+    type: string
+    optional: true
+    help: |
+      Prediction column name. Auto-detected from the first *_PREDICTION column when omitted.
+
+  - env: OUTCOME_COL
+    type: string
+    optional: true
+    help: |
+      Binary 0/1 outcome column in training data. Enables actual outcome rate in the narrative.
+
+  - env: MAX_EXPLANATIONS
+    type: string
+    default: "4"
+    optional: true
+    help: Maximum number of SHAP explanations per row (default 4).
+
+  # -------------------------------------------------------------------------
+  # App metadata
+  # -------------------------------------------------------------------------
+  - env: APP_TITLE
+    type: string
+    default: Prediction Explainability
+    optional: true
+    help: Browser tab / header title shown in the UI.
+
+  - env: APP_SUBTITLE
+    type: string
+    optional: true
+    help: Optional subtitle shown below the title.
+
+  - env: DATASET_DISPLAY_NAME
+    type: string
+    optional: true
+    help: Optional display name override for the dataset in the UI.
+
+  # -------------------------------------------------------------------------
+  # LLM — configure at least one provider for AI Narrative
+  # -------------------------------------------------------------------------
+  - env: DR_GATEWAY_MODEL
+    type: string
+    optional: true
+    help: |
+      DataRobot LLM Gateway model ID (recommended for DR SaaS).
+      Example: azure/gpt-4o-mini or azure/gpt-5-1-2025-11-13.
+      Uses DATAROBOT_API_TOKEN — no separate key needed.
+
+  - env: DR_LLM_DEPLOYMENT_ID
+    type: string
+    optional: true
+    help: |
+      DataRobot deployed TextGen model deployment ID (alternative to DR Gateway).
+
+  - env: AZURE_OPENAI_API_KEY
+    type: secret_string
+    optional: true
+    help: Azure OpenAI API key (bring-your-own-credentials path).
+
+  - env: AZURE_OPENAI_API_BASE
+    type: string
+    optional: true
+    help: Azure OpenAI endpoint, e.g. https://your-instance.openai.azure.com/
+
+  - env: AZURE_OPENAI_API_VERSION
+    type: string
+    default: "2024-02-01"
+    optional: true
+    help: Azure OpenAI API version.
+
+  - env: AZURE_OPENAI_DEPLOYMENT_NAME
+    type: string
+    optional: true
+    help: Azure OpenAI deployment name (e.g. gpt-4o).
+
+  - env: ANTHROPIC_API_KEY
+    type: secret_string
+    optional: true
+    help: Anthropic API key (bring-your-own-credentials path).
+
+  - env: ANTHROPIC_MODEL
+    type: string
+    default: claude-sonnet-4-6
+    optional: true
+    help: Anthropic model name when using ANTHROPIC_API_KEY.

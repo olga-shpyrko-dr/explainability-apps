@@ -571,12 +571,36 @@ uvx copier copy https://github.com/datarobot/af-component-base .</code></pre>
       <div class="step-num">03</div>
       <div class="step-body">
         <h2>Configure environment variables</h2>
-        <p>Instead of manually editing <code>.env</code>, the AF CLI maps variables to DataRobot's secret management:</p>
+        <p>Instead of manually editing <code>.env</code>, the AF CLI maps variables to DataRobot's secret management. Run from the <code>generic-explainability</code> recipe root:</p>
         <pre><code>dr dotenv setup</code></pre>
-        <p>Supply the same values as the <code>.env</code> table in Step 3 of the Codespace guide above (<code>DATAROBOT_API_TOKEN</code>, <code>SCORING_DATASET_ID</code>, <code>DEPLOYMENT_ID</code>, <code>ROW_ID_COL</code>, <code>DR_GATEWAY_MODEL</code>, etc.).</p>
+        <p>The wizard merges <strong>App Framework base prompts</strong> (Pulumi passphrase, default use case) with <strong>app-specific prompts</strong> from <code>.datarobot/cli/explainability-app.yaml</code>. You will be asked for everything the backend needs — not just infra defaults.</p>
+
+        <table class="config-table">
+          <thead>
+            <tr><th>Variable</th><th>Required</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>DATAROBOT_API_TOKEN</code></td><td class="req">required</td><td>Auto-filled when <code>dr auth login</code> is active</td></tr>
+            <tr><td><code>DATAROBOT_ENDPOINT</code></td><td class="req">required</td><td>Region URL, e.g. <code>https://app.eu.datarobot.com/api/v2</code></td></tr>
+            <tr><td><code>SCORING_DATASET_ID</code></td><td class="req">required</td><td>AI Catalog dataset to score on startup</td></tr>
+            <tr><td><code>ROW_ID_COL</code></td><td class="req">required</td><td>Unique row identifier column</td></tr>
+            <tr><td><code>DEPLOYMENT_ID</code></td><td class="req">recommended</td><td>Preferred — batch prediction via deployment (SHAP enabled)</td></tr>
+            <tr><td><code>PROJECT_ID</code> + <code>MODEL_ID</code></td><td>fallback</td><td>Only when <code>DEPLOYMENT_ID</code> is not set</td></tr>
+            <tr><td><code>OUTCOME_COL</code></td><td>optional</td><td>Enables actual outcome rate in AI narrative</td></tr>
+            <tr><td><code>DEFAULT_USE_CASE_ID</code></td><td>optional</td><td>Scopes the in-app dataset selector</td></tr>
+            <tr><td><code>DR_GATEWAY_MODEL</code></td><td class="req">recommended</td><td>LLM Gateway model for AI narrative</td></tr>
+            <tr><td><code>DR_LLM_DEPLOYMENT_ID</code></td><td>optional</td><td>Alternative LLM via deployed TextGen model</td></tr>
+            <tr><td><code>AZURE_OPENAI_*</code> / <code>ANTHROPIC_*</code></td><td>optional</td><td>Bring-your-own-credentials LLM paths</td></tr>
+          </tbody>
+        </table>
+
+        <p>Validate before deploying:</p>
+        <pre><code>dr dotenv validate
+dr run deploy</code></pre>
         <div class="note">
-          <code>DR_GATEWAY_MODEL</code> should be set to <code>azure/gpt-5-1-2025-11-13</code> for the structured AI narrative to work correctly.
+          <code>DR_GATEWAY_MODEL</code> should be set to <code>azure/gpt-5-1-2025-11-13</code> (or another model available in your tenant) for the structured AI narrative to work correctly.
         </div>
+        <p>After <code>af-component-base</code> scaffold, ensure <code>infra/infra/explainability_app.py</code> is present (included in this repo). It passes all configured env vars to the Custom Application as <code>runtime_parameter_values</code> — see <code>infra/README.md</code>.</p>
       </div>
     </div>
 
