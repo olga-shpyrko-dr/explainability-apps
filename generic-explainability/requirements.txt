@@ -4,6 +4,7 @@
 fastapi>=0.115
 uvicorn[standard]>=0.30
 datarobot>=3.5
+datarobot-asgi-middleware>=0.2.0
 pandas>=2.0
 anthropic>=0.28
 litellm>=1.40

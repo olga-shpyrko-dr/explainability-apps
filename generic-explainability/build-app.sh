@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
 # Build the React frontend before `dr run deploy`.
-# The Custom Application container is Python-only — it cannot run npm.
+# Safe to source during the Custom App Docker build (RUN . ./build-app.sh).
 set -euo pipefail
-cd "$(dirname "$0")/frontend"
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+DIST="${ROOT}/frontend/dist/index.html"
+
+if [[ -f "${DIST}" ]]; then
+  echo "frontend/dist already present — skipping build."
+  exit 0
+fi
+
+cd "${ROOT}/frontend"
 
 if [[ ! -f package-lock.json ]]; then
   echo "ERROR: package-lock.json missing — run 'npm install' in frontend/ first." >&2

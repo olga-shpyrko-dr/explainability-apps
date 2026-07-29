@@ -41,6 +41,7 @@ from config_loader import (
     validate_columns_against_profile,
 )
 from cohort import apply_filters, cohort_profile, group_shap_summary, row_explanation
+from datarobot_asgi_middleware import DataRobotASGIMiddleware
 from llm_client import available_providers, default_provider
 from narrative import generate_narrative, generate_row_narrative
 from pipeline import build_tables, build_tables_from_deployment, get_dataset_name, list_use_case_datasets, load_precalculated_dataset
@@ -117,6 +118,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Explainability API", lifespan=lifespan)
+
+# Required for DataRobot Custom Applications — handles proxy paths and health probes.
+app.add_middleware(DataRobotASGIMiddleware, health_endpoint="/health")
 
 # Platform liveness/readiness probe — must respond 200 before data scoring finishes.
 @app.get("/health", include_in_schema=False)
