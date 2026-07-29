@@ -385,14 +385,14 @@ def list_columns():
                 "min": float(series.min()) if not series.isna().all() else None,
                 "max": float(series.max()) if not series.isna().all() else None,
             })
+        elif looks_like_free_text(col, series.dropna().astype(str)):
+            result.append({"name": col, "type": "text", "n_unique": n_unique})
         elif n_unique <= 200:
             result.append({
                 "name": col,
                 "type": "categorical",
                 "values": sorted(series.dropna().astype(str).unique().tolist())[:200],
             })
-        elif looks_like_free_text(col, series.dropna().astype(str)):
-            result.append({"name": col, "type": "text", "n_unique": n_unique})
         else:
             result.append({"name": col, "type": "identifier", "n_unique": n_unique})
 

@@ -52,11 +52,11 @@ Gather these values before running anything. How you supply them depends on the 
 
 ### 03. Customise domain configuration
 
-Edit the three JSON files in `backend/` to match your use case. Commit them back to the repo (or a deployment-specific fork) so the configuration is reproducible.
+Edit the three JSON files in `backend/` to match your use case — **required whenever you point the app at new data**, since these files drive everything the UI shows about your entities (tab labels, narrative wording, chart groupings), not just `.env`.
 
-- **`feature_group_mapping.json`** — Maps model feature names to named business domain groups shown in the Group Explanations chart. All explanation feature names must appear here — unmatched names fall into "Other".
+- **`feature_group_mapping.json`** — Maps model feature names to named business domain groups shown in the Group Explanations chart. All explanation feature names must appear here — unmatched names fall into "Other". Re-check this every time the underlying model or feature set changes; stale mappings silently dump everything into "Other".
 - **`profile_config.json`** — Which columns appear in the cohort filter panel and individual profile view, plus score and explanation filter defaults.
-- **`narrative_config.json`** — Entity labels, score labels, recommended action hint, and optional custom LLM prompt overrides.
+- **`narrative_config.json`** — Entity labels, score labels, recommended action hint, and optional custom LLM prompt overrides. `entity_label` in particular drives UI text like the "Individual {Label}" tab — update it for your domain (e.g. `claim`, `subscriber`, `policyholder`) rather than leaving a previous deployment's value in place.
 
 ---
 
