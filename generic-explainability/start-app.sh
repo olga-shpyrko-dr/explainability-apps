@@ -44,7 +44,12 @@ if [[ ! -f frontend/dist/index.html ]]; then
 fi
 
 echo "Starting explainability API on 0.0.0.0:8080…"
+export PYTHONUNBUFFERED=1
+
 cd backend
+python3 -c "import fastapi, uvicorn; from datarobot_asgi_middleware import DataRobotASGIMiddleware; print('imports ok')" \
+  || { echo "ERROR: Python imports failed — check requirements.txt / build-app.sh output." >&2; exit 1; }
+
 exec python3 -m uvicorn main:app \
   --host 0.0.0.0 \
   --port 8080 \
