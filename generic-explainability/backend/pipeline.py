@@ -203,10 +203,12 @@ def _get_or_create_batch_prediction_deployment(
     are fast without re-running scoring.
 
     The deployment must have SHAP prediction explanations enabled.
+
+    Output is written to the AI Catalog (not localFile) so the result is
+    accessible from the deployed Custom Application container.
     """
     import datarobot as dr  # type: ignore
 
-    # Cache key: local CSV file alongside the cache JSON
     cache = _read_cache()
     local_csv = _CACHE_FILE.parent / ".batch_output_cache.csv"
     if (
@@ -224,44 +226,56 @@ def _get_or_create_batch_prediction_deployment(
         deployment_id, catalog_dataset_id,
     )
 
+    # Use catalog dataset output — localFile writes to the DR worker filesystem,
+    # not the app container, so results are never available in deployed mode.
+    output_dataset_name = f".batch_output_{deployment_id[:8]}_{catalog_dataset_id[:8]}"
+
     job = dr.BatchPredictionJob.score(
         deployment=deployment_id,
         intake_settings={
             "type": "dataset",
             "dataset": dr.Dataset.get(catalog_dataset_id),
         },
-        output_settings={"type": "localFile", "path": str(local_csv)},
+        output_settings={
+            "type": "catalog",
+            "catalog_name": output_dataset_name,
+            "catalog_id": None,
+        },
         num_concurrent=4,
         max_explanations=max_explanations,
         explanation_algorithm="shap",
         passthrough_columns=[row_id_col],
     )
-    try:
-        job.wait_for_completion()
-    except Exception as exc:
-        # DR marks localFile output jobs as "ABORTED" when the SDK begins
-        # downloading results — this is expected behavior, not a real failure.
-        # Proceed if the file was written; raise a clear error otherwise.
-        if "aborted" in str(exc).lower():
-            if local_csv.exists() and local_csv.stat().st_size > 0:
-                logger.info(
-                    "Batch job marked aborted after results download (expected for localFile output) "
-                    "— output file present (%d bytes), continuing.",
-                    local_csv.stat().st_size,
-                )
-            else:
-                raise RuntimeError(
-                    "Batch prediction job was aborted before results could be saved locally. "
-                    "This can happen if the results were downloaded via the DataRobot UI "
-                    "before the backend could retrieve them. Please try again."
-                ) from exc
-        else:
-            raise
 
-    if not local_csv.exists():
-        raise RuntimeError(
-            f"Batch prediction job {job.id} completed but output file not found at {local_csv}"
+    job.wait_for_completion()
+
+    # Download result from AI Catalog — try job.links first, then search by name.
+    output_dataset_id = None
+    try:
+        links = job.links or {}
+        output_dataset_id = (
+            links.get("catalogId")
+            or links.get("output", {}).get("catalogId")
         )
+    except Exception:
+        pass
+
+    if not output_dataset_id:
+        logger.info(
+            "Catalog ID not in job links — searching AI Catalog for '%s'…",
+            output_dataset_name,
+        )
+        matches = [d for d in dr.Dataset.list() if d.name == output_dataset_name]
+        if not matches:
+            raise RuntimeError(
+                f"Batch prediction job {job.id} completed but output dataset "
+                f"'{output_dataset_name}' not found in AI Catalog."
+            )
+        output_dataset_id = matches[0].id
+
+    logger.info("Downloading batch output from catalog dataset %s…", output_dataset_id)
+    result_df = dr.Dataset.get(output_dataset_id).get_as_dataframe()
+    result_df.to_csv(local_csv, index=False)
 
     _write_cache({
         "mode": "deployment",
@@ -269,8 +283,8 @@ def _get_or_create_batch_prediction_deployment(
         "catalog_dataset_id": catalog_dataset_id,
         "row_id_col": row_id_col,
     })
-    logger.info("Batch prediction job complete — output written to %s", local_csv)
-    return pd.read_csv(local_csv)
+    logger.info("Batch prediction job complete — %d rows downloaded.", len(result_df))
+    return result_df
 
 
 def build_tables_from_deployment(
@@ -323,7 +337,7 @@ def build_tables_from_deployment(
             how="left",
         )
     else:
-        # localFile output omits input columns — join positionally (batch preserves row order)
+        # Fallback when passthrough row_id_col is absent — join positionally (batch preserves row order)
         logger.info(
             "row_id_col '%s' absent from batch output; joining by row position", row_id_col
         )

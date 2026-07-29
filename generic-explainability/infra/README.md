@@ -54,6 +54,32 @@ as runtime parameters (not just the barebones Pulumi params from base).
 
 See `.datarobot/cli/explainability-app.yaml` for the full list and help text.
 
+## Troubleshooting deploy failures
+
+### "Custom Application is not ready: application failed to create"
+
+1. **Test startup locally in the Codespace** (fastest way to see the real error):
+
+   ```bash
+   ./build-app.sh
+   bash -x ./start-app.sh
+   ```
+
+2. **Check Custom Application logs** in DataRobot UI:
+   Registry → Custom Applications → your app → **Logs**
+
+3. **Common causes:**
+   - `frontend/dist` missing → run `./build-app.sh` before `dr run deploy`
+   - `pyodbc` / SQL deps in `requirements.txt` → use lean `requirements.txt` only
+   - Missing env vars → run `dr dotenv validate`
+
+4. **Refresh a stuck stack:**
+
+   ```bash
+   dr run infra:refresh -- -y
+   dr run deploy
+   ```
+
 ## Keeping prompts in sync
 
 When adding a new field to `backend/config.py`:
