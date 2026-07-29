@@ -2,6 +2,9 @@
 set -e
 cd "$(dirname "$0")"
 
+echo "Codespace tip: ./start-codespace.sh (:8080) or ./start-preview.sh (:5173 preview) avoid Vite dev proxy issues."
+echo ""
+
 DEV_PORT="${VITE_DEV_PORT:-5173}"
 
 # ---------------------------------------------------------------------------

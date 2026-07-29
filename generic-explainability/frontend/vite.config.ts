@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type UserConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 const DEV_PORT = Number(process.env.VITE_DEV_PORT || process.env.PORT || 5173);
@@ -13,8 +13,10 @@ function datarobotOrigin(): string {
 
 /**
  * When running in a DataRobot Codespace, the UI is accessed via
- * /notebook-sessions/{id}/ports/{port}/. Vite must use that as `base`
+ * /notebook-sessions/{id}/ports/{port}/. Vite dev must use that as `base`
  * or module URLs resolve to the domain root (404 on /src/App.tsx).
+ *
+ * `vite preview` does NOT need this — it serves the built dist/ with base "./".
  */
 function notebookDevBase(): string | null {
   const explicit = process.env.VITE_DEV_BASE?.trim();
@@ -37,17 +39,11 @@ function notebookDevBase(): string | null {
   return `/notebook-sessions/${notebookId}/ports/${DEV_PORT}/`;
 }
 
-export default defineConfig(({ command }) => {
-  const notebookBase = command === "serve" ? notebookDevBase() : null;
-  const base = command === "build" ? "./" : (notebookBase ?? "/");
-
-  if (command === "serve") {
-    console.log(
-      `[vite] base=${base} NOTEBOOK_ID=${process.env.NOTEBOOK_ID ?? "unset"} ` +
-        `(set NOTEBOOK_ID or VITE_DEV_BASE if modules 404 at domain root)`
-    );
-  }
-
+function buildApiProxy(notebookBase: string | null): UserConfig["server"] extends infer S
+  ? S extends { proxy?: infer P }
+    ? P
+    : Record<string, string | object>
+  : Record<string, string | object> {
   const proxy: Record<string, string | object> = {
     "/api": {
       target: "http://127.0.0.1:8000",
@@ -65,16 +61,33 @@ export default defineConfig(({ command }) => {
       },
     };
   }
+  return proxy;
+}
+
+const listenOptions = {
+  port: DEV_PORT,
+  strictPort: true,
+  allowedHosts: [".datarobot.com", "localhost"] as const,
+  host: true as const,
+};
+
+export default defineConfig(({ command }) => {
+  const notebookBase = command === "serve" ? notebookDevBase() : null;
+  const base = command === "build" || command === "preview" ? "./" : (notebookBase ?? "/");
+  const proxy = buildApiProxy(notebookBase);
+
+  if (command === "serve") {
+    console.log(
+      `[vite] base=${base} NOTEBOOK_ID=${process.env.NOTEBOOK_ID ?? "unset"} ` +
+        `(use 'npm run preview' in Codespaces if modules 404 at domain root)`
+    );
+  }
 
   const server: Record<string, unknown> = {
-    port: DEV_PORT,
-    strictPort: true,
-    allowedHosts: [".datarobot.com", "localhost"],
-    host: true,
+    ...listenOptions,
     proxy,
   };
   if (notebookBase) {
-  // Ensures @vite/client and module imports use the proxied path, not domain root.
     server.origin = `${datarobotOrigin()}${notebookBase.replace(/\/$/, "")}`;
   }
 
@@ -82,5 +95,11 @@ export default defineConfig(({ command }) => {
     plugins: [react()],
     base,
     server,
+    // vite preview — recommended for Codespace testing (serves dist/, no /src/ requests).
+    // Requires backend on :8000 for /api proxy.
+    preview: {
+      ...listenOptions,
+      proxy,
+    },
   };
 });
