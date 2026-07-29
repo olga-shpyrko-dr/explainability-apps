@@ -609,8 +609,10 @@ dr run deploy</code></pre>
       <div class="step-num">04</div>
       <div class="step-body">
         <h2>Deploy</h2>
-        <pre><code>dr run deploy</code></pre>
-        <p>The CLI creates the Custom Application in DataRobot, builds the container, and outputs the shareable URL. The <code>start-app.sh</code> entry point (already in the repo) builds the React frontend and starts the FastAPI backend on port 8080 automatically.</p>
+        <p>Build the frontend locally first — the Custom Application container is Python-only and cannot run <code>npm</code>:</p>
+        <pre><code>./build-app.sh
+dr run deploy</code></pre>
+        <p>The CLI creates the Custom Application in DataRobot, uploads the bundle (including pre-built <code>frontend/dist</code>), and outputs the shareable URL. The <code>start-app.sh</code> entry point installs Python deps and starts the FastAPI backend on port 8080.</p>
         <div class="note">
           On first load the app scores <code>SCORING_DATASET_ID</code> via batch prediction — this may take a minute. Subsequent loads use the cached result.
         </div>
