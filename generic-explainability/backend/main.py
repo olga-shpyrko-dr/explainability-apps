@@ -53,36 +53,34 @@ _state: dict[str, Any] = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    cfg = get_settings()
+    # Yield immediately so /health responds before config load or batch scoring.
+    _state["ready"] = False
 
-    # Load JSON configs synchronously (fast, fail-fast on bad config)
-    profile_cfg = load_profile_config()
-    narrative_cfg = load_narrative_config()
-
-    # Populate config-derived state immediately so the app is ready to accept
-    # health-check requests before the (potentially slow) data load completes.
-    _state.update({
-        "ready": False,
-        "profile_cfg": profile_cfg,
-        "narrative_cfg": narrative_cfg,
-        "cfg": cfg,
-        "row_id_col": cfg.row_id_col,
-        "outcome_col": cfg.outcome_col,
-        "app_title": cfg.app_title,
-        "app_subtitle": cfg.app_subtitle,
-        "max_explanations": cfg.max_explanations,
-        "score_histogram_bins": cfg.score_histogram_bins,
-        "top_features_per_group": cfg.top_features_per_group,
-        "cohort_warning_min_rows": cfg.cohort_warning_min_rows,
-        "narrative_max_tokens": cfg.narrative_max_tokens,
-        "narrative_groups_in_prompt": cfg.narrative_groups_in_prompt,
-        "narrative_features_per_group": cfg.narrative_features_per_group,
-        "data_source": cfg.data_source,
-        "default_use_case_id": cfg.default_use_case_id,
-    })
-
-    async def _load_data() -> None:
+    async def _bootstrap() -> None:
         try:
+            cfg = get_settings()
+            profile_cfg = load_profile_config()
+            narrative_cfg = load_narrative_config()
+
+            _state.update({
+                "profile_cfg": profile_cfg,
+                "narrative_cfg": narrative_cfg,
+                "cfg": cfg,
+                "row_id_col": cfg.row_id_col,
+                "outcome_col": cfg.outcome_col,
+                "app_title": cfg.app_title,
+                "app_subtitle": cfg.app_subtitle,
+                "max_explanations": cfg.max_explanations,
+                "score_histogram_bins": cfg.score_histogram_bins,
+                "top_features_per_group": cfg.top_features_per_group,
+                "cohort_warning_min_rows": cfg.cohort_warning_min_rows,
+                "narrative_max_tokens": cfg.narrative_max_tokens,
+                "narrative_groups_in_prompt": cfg.narrative_groups_in_prompt,
+                "narrative_features_per_group": cfg.narrative_features_per_group,
+                "data_source": cfg.data_source,
+                "default_use_case_id": cfg.default_use_case_id,
+            })
+
             logger.info("Building data tables (mode=%s)…", cfg.data_source)
             loop = asyncio.get_running_loop()
             scored_pop, expl_long, prediction_col = await loop.run_in_executor(
@@ -110,10 +108,10 @@ async def lifespan(app: FastAPI):
                 scored_pop.shape, expl_long.shape, prediction_col,
             )
         except Exception as exc:
-            logger.error("Data loading failed: %s", exc, exc_info=True)
+            logger.error("Startup failed: %s", exc, exc_info=True)
             _state["init_error"] = str(exc)
 
-    asyncio.create_task(_load_data())
+    asyncio.create_task(_bootstrap())
     yield
     _state.clear()
 

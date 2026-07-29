@@ -106,6 +106,12 @@ __all__ = [
 def get_explainability_app_files() -> list[tuple[str, str]]:
     """Bundle the recipe root (parent of infra/) for upload to ApplicationSource."""
     application_path = project_dir.parent
+    dist_index = application_path / "frontend" / "dist" / "index.html"
+    if not dist_index.exists():
+        raise FileNotFoundError(
+            f"frontend/dist/index.html not found under {application_path}. "
+            "Run ./build-app.sh (or ./deploy.sh) before dr run deploy."
+        )
     source_files: list[tuple[str, str]] = []
     for dirpath, _dirnames, filenames in os.walk(application_path, followlinks=True):
         for filename in filenames:

@@ -20,8 +20,10 @@ as runtime parameters (not just the barebones Pulumi params from base).
 3. Build the frontend **before** deploying (the Custom App container is Python-only):
 
    ```bash
-   ./build-app.sh
+   ./deploy.sh
    ```
+
+   Or manually: `./build-app.sh` then `dr run deploy`.
 
 4. Configure **all** app parameters interactively:
 
@@ -34,7 +36,7 @@ as runtime parameters (not just the barebones Pulumi params from base).
    - `.datarobot/cli/explainability-app.yaml` — scoring, columns, LLM, metadata
    - `.env.template` — variable discovery for `dr dotenv validate`
 
-5. Deploy:
+5. Deploy (if you did not use `./deploy.sh` in step 3):
 
    ```bash
    dr run deploy
@@ -69,7 +71,8 @@ See `.datarobot/cli/explainability-app.yaml` for the full list and help text.
    Registry → Custom Applications → your app → **Logs**
 
 3. **Common causes:**
-   - `frontend/dist` missing → run `./build-app.sh` before `dr run deploy`
+   - `frontend/dist` missing → run `./deploy.sh` (builds frontend then deploys)
+   - Redundant `pip install` in `start-app.sh` → removed; platform installs `requirements.txt`
    - `pyodbc` / SQL deps in `requirements.txt` → use lean `requirements.txt` only
    - Missing env vars → run `dr dotenv validate`
 
