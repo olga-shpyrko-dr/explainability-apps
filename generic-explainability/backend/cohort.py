@@ -114,6 +114,10 @@ def _histogram(series: pd.Series, bins: int = 20) -> list[dict]:
     ]
 
 
+def _sigmoid(x: float) -> float:
+    return 1.0 / (1.0 + math.exp(-float(x)))
+
+
 # ---------------------------------------------------------------------------
 # Group SHAP aggregation
 # ---------------------------------------------------------------------------
@@ -123,12 +127,14 @@ def group_shap_summary(
     explanation_long: pd.DataFrame,
     row_id_col: str = "row_id",
     top_features_per_group: int = 5,
+    cohort_predictions: Optional[pd.Series] = None,
 ) -> list[dict[str, Any]]:
     """
     Aggregate SHAP values by feature group for the cohort.
 
-    Returns list of dicts sorted by avg_abs_shap descending:
-        feature_group, avg_abs_shap, avg_shap, sum_shap,
+    Returns list of dicts sorted by avg_pp_contribution descending (falls back
+    to avg_abs_shap when predictions are not supplied):
+        feature_group, avg_abs_shap, avg_shap, sum_shap, avg_pp_contribution,
         n_rows_with_coverage, coverage_pct,
         top_features: [{feature_name, avg_shap, avg_abs_shap, n_rows}]
 
@@ -136,6 +142,11 @@ def group_shap_summary(
       avg_abs_shap — mean(|strength|) — bar height; immune to cancellation.
       avg_shap     — mean(strength)   — signed average; used in narrative table.
       sum_shap     — sum(strength)    — net direction driver; used for bar colour.
+
+    avg_pp_contribution — average probability-space contribution per row (pp).
+      For each row: groups are sorted by abs(group SHAP sum) and cumulated
+      through sigmoid, so contributions are meaningful in probability space
+      and sum to (prediction − baseline_probability) for that row.
     """
     cohort_set = set(cohort_row_ids)
     cohort_exp = explanation_long[explanation_long[row_id_col].isin(cohort_set)].copy()
@@ -187,10 +198,53 @@ def group_shap_summary(
     for row in result:
         row["top_features"] = top_features.get(row["feature_group"], [])
 
-    # Sort: "Other" always last; remaining by avg_abs_shap descending
-    result.sort(
-        key=lambda r: (r["feature_group"] == "Other", -r["avg_abs_shap"])
-    )
+    # ---------------------------------------------------------------------------
+    # Per-row probability contributions via sigmoid transform
+    # ---------------------------------------------------------------------------
+    if cohort_predictions is not None and not cohort_predictions.empty:
+        # Per-row, per-group SHAP sums — shape (n_rows, n_groups)
+        row_group = (
+            cohort_exp.groupby([row_id_col, "feature_group"])["shap_strength"]
+            .sum()
+            .unstack(fill_value=0.0)
+        )
+        # Align predictions index
+        preds = cohort_predictions.reindex(row_group.index).dropna()
+        row_group = row_group.loc[preds.index]
+
+        row_total_shap = row_group.sum(axis=1)
+        # logit per row, clamped to avoid ±inf
+        logodds = preds.clip(1e-7, 1 - 1e-7).apply(lambda p: math.log(p / (1 - p)))
+        baseline_logodds = logodds - row_total_shap
+
+        # Consistent group ordering for cumulation: descending mean abs contribution
+        group_order = row_group.abs().mean().sort_values(ascending=False).index.tolist()
+        row_group = row_group[group_order]
+
+        # Vectorised cumulative sigmoid pass
+        cum_lo = baseline_logodds.copy()
+        pp_cols: dict[str, pd.Series] = {}
+        for g in group_order:
+            prob_before = cum_lo.apply(_sigmoid)
+            cum_lo = cum_lo + row_group[g]
+            prob_after = cum_lo.apply(_sigmoid)
+            pp_cols[g] = (prob_after - prob_before).abs()
+
+        pp_df = pd.DataFrame(pp_cols)
+        avg_pp: dict[str, float] = pp_df.mean().to_dict()
+        for row in result:
+            row["avg_pp_contribution"] = round(avg_pp.get(row["feature_group"], 0.0), 6)
+    else:
+        for row in result:
+            row["avg_pp_contribution"] = None
+
+    # Sort: "Other" always last; remaining by avg_pp_contribution (or avg_abs_shap) descending
+    def _sort_key(r: dict) -> tuple:
+        pp = r.get("avg_pp_contribution")
+        key = -pp if pp is not None else -r["avg_abs_shap"]
+        return (r["feature_group"] == "Other", key)
+
+    result.sort(key=_sort_key)
     return result
 
 
