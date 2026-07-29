@@ -1,6 +1,6 @@
 # Generic Explainability App
 
-A DataRobot-hosted application that transforms raw SHAP prediction explanations into actionable, business-readable insights. It works with any DataRobot binary classification deployment that has SHAP prediction explanations enabled.
+A DataRobot-hosted application that transforms raw SHAP prediction explanations into actionable, business-readable insights. It works with any DataRobot binary classification or regression deployment that has SHAP prediction explanations enabled; see [Compatibility](#compatibility) for supported project types.
 
 ---
 

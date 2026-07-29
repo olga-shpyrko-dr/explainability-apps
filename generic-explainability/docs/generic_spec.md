@@ -28,7 +28,7 @@ DataRobot provides row-level prediction explanations (SHAP values) for every mod
 - There is no cohort-level view: analysts must inspect individual rows or build custom aggregations outside the platform.
 - End users need plain-language insight into *why* a segment is high-risk, not a raw list of feature names and SHAP values.
 
-This app addresses all four problems for **any binary classification model** deployed in DataRobot, without requiring code changes when switching models or domains.
+This app addresses all four problems for **any binary classification or regression model** deployed in DataRobot, without requiring code changes when switching models or domains.
 
 ---
 
