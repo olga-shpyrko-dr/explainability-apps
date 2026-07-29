@@ -83,6 +83,12 @@ background.
 
 ### "Custom Application is not ready: application failed to create"
 
+The platform health probe must get HTTP 200 from `/health` within ~2–3 minutes.
+Heavy imports (pandas, datarobot) used to block uvicorn from binding in time.
+
+**Fix:** `start-app.sh` runs `uvicorn boot:app` — a lightweight probe server that
+responds on `/health` immediately while `main.py` loads in the background.
+
 1. **Test startup locally in the Codespace** (fastest way to see the real error):
 
    ```bash

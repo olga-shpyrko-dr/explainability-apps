@@ -41,35 +41,12 @@ if [[ ! -f frontend/dist/index.html ]]; then
   exit 1
 fi
 
-_ensure_python_deps() {
-  if python3 -c "import fastapi, uvicorn; from datarobot_asgi_middleware import DataRobotASGIMiddleware" 2>/dev/null; then
-    return 0
-  fi
-  echo "WARNING: core Python imports failed — installing from requirements.txt…" >&2
-  python3 -m pip install --no-cache-dir -r requirements.txt
-  if [[ -f requirements-llm.txt ]]; then
-    python3 -m pip install --no-cache-dir -r requirements-llm.txt
-  fi
-  python3 -c "import fastapi, uvicorn; from datarobot_asgi_middleware import DataRobotASGIMiddleware"
-}
-
 echo "Python $(python3 --version 2>&1)"
-echo "Starting explainability API on 0.0.0.0:8080…"
+echo "Starting explainability API on 0.0.0.0:8080 (boot:app probe server)…"
 export PYTHONUNBUFFERED=1
 
-_ensure_python_deps || {
-  echo "ERROR: Python imports failed — check Docker build log for pip install errors." >&2
-  exit 1
-}
-
 cd backend
-python3 -c "import main" || {
-  echo "ERROR: failed to import backend/main.py:" >&2
-  python3 -c "import traceback; traceback.print_exc()" 2>&1 || true
-  exit 1
-}
-
-exec python3 -m uvicorn main:app \
+exec python3 -m uvicorn boot:app \
   --host 0.0.0.0 \
   --port 8080 \
   --proxy-headers \
