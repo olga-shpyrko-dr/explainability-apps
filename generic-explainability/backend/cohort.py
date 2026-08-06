@@ -73,9 +73,13 @@ def cohort_profile(
             "p90": round(float(s.quantile(0.9)), 4),
         }
 
+    full_scores = pd.to_numeric(full_df.get(prediction_col, pd.Series(dtype=float)), errors="coerce").dropna()
+    value_range = (float(full_scores.min()), float(full_scores.max())) if len(full_scores) else (0.0, 1.0)
+
     score_hist = _histogram(
         pd.to_numeric(cohort_df.get(prediction_col, pd.Series(dtype=float)), errors="coerce"),
         bins=score_histogram_bins,
+        value_range=value_range,
     )
 
     # Sample rows sorted by prediction score descending (highest-risk first)
@@ -99,11 +103,14 @@ def cohort_profile(
     }
 
 
-def _histogram(series: pd.Series, bins: int = 20) -> list[dict]:
+def _histogram(series: pd.Series, bins: int = 20, value_range: tuple[float, float] = (0.0, 1.0)) -> list[dict]:
     s = series.dropna()
     if len(s) == 0:
         return []
-    counts, edges = np.histogram(s, bins=bins, range=(0.0, 1.0))
+    lo, hi = value_range
+    if lo == hi:
+        lo, hi = lo - 0.5, hi + 0.5
+    counts, edges = np.histogram(s, bins=bins, range=(lo, hi))
     return [
         {
             "bin_start": round(float(edges[i]), 3),
