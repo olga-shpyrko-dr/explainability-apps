@@ -1,0 +1,31 @@
+{
+  "groups": {
+    "Engine": [
+      "oil_pressure_psi",
+      "coolant_temp_f",
+      "idle_ratio_pct"
+    ],
+    "Hydraulic": [
+      "hydraulic_pressure_psi"
+    ],
+    "Drivetrain & Undercarriage": [
+      "vibration_rms_g",
+      "load_factor_pct"
+    ],
+    "Electrical": [
+      "engine_rpm",
+      "fuel_burn_rate_gph"
+    ],
+    "Maintenance & Usage": [
+      "engine_hours",
+      "days_since_last_service",
+      "timestamp",
+      "timestamp (Day of Week)",
+      "timestamp (Hour of Day)"
+    ],
+    "Operating Environment": [
+      "ambient_temp_f",
+      "asset_type"
+    ]
+  }
+}

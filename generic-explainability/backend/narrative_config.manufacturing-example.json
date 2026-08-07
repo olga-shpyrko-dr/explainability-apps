@@ -1,0 +1,14 @@
+{
+  "domain_description": "predictive maintenance — forecasting remaining useful life (RUL, in days) for heavy equipment from sensor telemetry",
+  "entity_label": "telemetry reading",
+  "entity_label_plural": "telemetry readings",
+  "target_audience": "reliability engineer / field service planner",
+  "high_score_label": "long remaining useful life (healthy, low near-term failure risk)",
+  "low_score_label": "short remaining useful life (imminent failure risk)",
+  "factor_positive_label": "factor extending predicted remaining useful life (lowers failure risk)",
+  "factor_negative_label": "factor shortening predicted remaining useful life (raises failure risk)",
+  "outcome_label": "mean actual remaining useful life (days) observed in holdout data",
+  "recommended_action_hint": "Prioritise inspection or parts staging for assets with predicted RUL under ~7 days, especially where vibration or oil-pressure readings are the dominant driver.",
+  "custom_system_prompt": null,
+  "custom_user_template": null
+}
