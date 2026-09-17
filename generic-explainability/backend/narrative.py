@@ -167,9 +167,15 @@ def build_prompt(
     score_full = profile.get("score_stats_full", {})
     filter_desc = _describe_filters(filters) or "none (full scored population)"
     outcome_label = nc.get("outcome_label", "observed outcome rate")
-    outcome_note = (
-        f"{outcome_label.upper()}: {outcome_rate:.1%}" if outcome_rate is not None else ""
-    )
+    is_regression = nc.get("target_type", "classification") == "regression"
+    if outcome_rate is not None:
+        outcome_note = (
+            f"{outcome_label.upper()}: {outcome_rate:.1f}"
+            if is_regression
+            else f"{outcome_label.upper()}: {outcome_rate:.1%}"
+        )
+    else:
+        outcome_note = ""
 
     # Future: replace with DataRobot Prompt Management API for versioned templates.
     template = nc.get("custom_user_template") or _USER_TEMPLATE
@@ -195,9 +201,15 @@ def build_prompt(
 # ---------------------------------------------------------------------------
 
 def build_row_system_prompt(nc: dict[str, Any]) -> str:
+    is_regression = nc.get("target_type", "classification") == "regression"
+    score_framing = (
+        f"its {nc.get('score_unit_label', 'predicted score').lower()}"
+        if is_regression
+        else "its risk score"
+    )
     return (
         f"You are a senior {nc['entity_label']} reviewer. "
-        f"Explain concisely why a specific {nc['entity_label']} received its risk score "
+        f"Explain concisely why a specific {nc['entity_label']} received {score_framing} "
         f"so a junior analyst understands what to look for and what action to take. "
         f"Never use the terms 'SHAP' or 'feature importance'. "
         f"Refer to factors as directly observed characteristics of the {nc['entity_label']}. "
@@ -212,7 +224,14 @@ def build_row_prompt(
     nc: dict[str, Any],
     custom_instruction: str = "",
 ) -> str:
-    score_pct = f"{prediction * 100:.1f}%"
+    is_regression = nc.get("target_type", "classification") == "regression"
+    if is_regression:
+        unit = nc.get("score_unit_suffix", "")
+        score_display = f"{prediction:.1f}{(' ' + unit) if unit else ''}"
+        score_line_label = nc.get("score_unit_label", "Predicted value")
+    else:
+        score_display = f"{prediction * 100:.1f}%"
+        score_line_label = f"Risk score (probability of {nc['high_score_label']})"
 
     groups_seen: list[str] = []
     for entry in waterfall:
@@ -229,7 +248,7 @@ def build_row_prompt(
         "Return a JSON object with these exact keys. No other text.",
         "",
         '{',
-        f'  "summary": "<one sentence: risk level and {score_pct} score, main driver>",',
+        f'  "summary": "<one sentence: risk level and {score_display} score, main driver>",',
         f'  "drivers": [{driver_schema}],',
         '  "recommendations": "<one or two concrete actions for the reviewer>"',
         '}',
@@ -237,7 +256,7 @@ def build_row_prompt(
         "DATA:",
         "",
         f"{nc['entity_label'].title()} ID: {row_id}",
-        f"Risk score (probability of {nc['high_score_label']}): {score_pct}",
+        f"{score_line_label}: {score_display}",
         "",
         "Top factors (ordered by impact):",
     ]

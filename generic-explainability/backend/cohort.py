@@ -121,10 +121,6 @@ def _histogram(series: pd.Series, bins: int = 20, value_range: tuple[float, floa
     ]
 
 
-def _sigmoid(x: float) -> float:
-    return 1.0 / (1.0 + math.exp(-float(x)))
-
-
 # ---------------------------------------------------------------------------
 # Group SHAP aggregation
 # ---------------------------------------------------------------------------
@@ -150,10 +146,12 @@ def group_shap_summary(
       avg_shap     — mean(strength)   — signed average; used in narrative table.
       sum_shap     — sum(strength)    — net direction driver; used for bar colour.
 
-    avg_pp_contribution — average probability-space contribution per row (pp).
-      For each row: groups are sorted by abs(group SHAP sum) and cumulated
-      through sigmoid, so contributions are meaningful in probability space
-      and sum to (prediction − baseline_probability) for that row.
+    avg_pp_contribution — average share of total |SHAP| magnitude accounted
+      for by this group, per row (0-1, sums to 1.0 across groups per row).
+      Computed as |group SHAP sum| / sum(|group SHAP sum| across all groups)
+      for each row, then averaged over the cohort. Applies uniformly to
+      regression and classification targets — no probability transform
+      needed.
     """
     cohort_set = set(cohort_row_ids)
     cohort_exp = explanation_long[explanation_long[row_id_col].isin(cohort_set)].copy()
@@ -206,7 +204,7 @@ def group_shap_summary(
         row["top_features"] = top_features.get(row["feature_group"], [])
 
     # ---------------------------------------------------------------------------
-    # Per-row probability contributions via sigmoid transform
+    # Per-row share of total |SHAP| magnitude (target-type-agnostic)
     # ---------------------------------------------------------------------------
     if cohort_predictions is not None and not cohort_predictions.empty:
         # Per-row, per-group SHAP sums — shape (n_rows, n_groups)
@@ -215,30 +213,19 @@ def group_shap_summary(
             .sum()
             .unstack(fill_value=0.0)
         )
-        # Align predictions index
+        # Align to rows that have a valid prediction (keeps prior semantics
+        # of only covering rows with a usable score), though the prediction
+        # value itself is no longer used in the math below.
         preds = cohort_predictions.reindex(row_group.index).dropna()
         row_group = row_group.loc[preds.index]
 
-        row_total_shap = row_group.sum(axis=1)
-        # logit per row, clamped to avoid ±inf
-        logodds = preds.clip(1e-7, 1 - 1e-7).apply(lambda p: math.log(p / (1 - p)))
-        baseline_logodds = logodds - row_total_shap
+        # Per-row share of total |SHAP| magnitude accounted for by each
+        # group. Bounded in [0, 1]; sums to 1.0 across groups for every row.
+        row_group_abs = row_group.abs()
+        row_total_abs = row_group_abs.sum(axis=1).replace(0, np.nan)
+        row_pct = row_group_abs.div(row_total_abs, axis=0)
 
-        # Consistent group ordering for cumulation: descending mean abs contribution
-        group_order = row_group.abs().mean().sort_values(ascending=False).index.tolist()
-        row_group = row_group[group_order]
-
-        # Vectorised cumulative sigmoid pass
-        cum_lo = baseline_logodds.copy()
-        pp_cols: dict[str, pd.Series] = {}
-        for g in group_order:
-            prob_before = cum_lo.apply(_sigmoid)
-            cum_lo = cum_lo + row_group[g]
-            prob_after = cum_lo.apply(_sigmoid)
-            pp_cols[g] = (prob_after - prob_before).abs()
-
-        pp_df = pd.DataFrame(pp_cols)
-        avg_pp: dict[str, float] = pp_df.mean().to_dict()
+        avg_pp: dict[str, float] = row_pct.mean().to_dict()
         for row in result:
             row["avg_pp_contribution"] = round(avg_pp.get(row["feature_group"], 0.0), 6)
     else:
