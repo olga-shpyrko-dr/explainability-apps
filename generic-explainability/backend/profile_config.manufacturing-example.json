@@ -1,0 +1,91 @@
+{
+  "profile_attributes": [
+    {
+      "column": "asset_type",
+      "display_name": "Asset type",
+      "filter_type": "multiselect",
+      "show_in_profile": true
+    },
+    {
+      "column": "asset_id",
+      "display_name": "Asset ID",
+      "filter_type": "multiselect",
+      "show_in_profile": false
+    },
+    {
+      "column": "engine_hours",
+      "display_name": "Engine hours (lifetime)",
+      "filter_type": "range",
+      "show_in_profile": true
+    },
+    {
+      "column": "days_since_last_service",
+      "display_name": "Days since last service",
+      "filter_type": "range",
+      "show_in_profile": true
+    },
+    {
+      "column": "vibration_rms_g",
+      "display_name": "Vibration (RMS g)",
+      "filter_type": "range",
+      "show_in_profile": true
+    },
+    {
+      "column": "oil_pressure_psi",
+      "display_name": "Oil pressure (psi)",
+      "filter_type": "range",
+      "show_in_profile": true
+    },
+    {
+      "column": "coolant_temp_f",
+      "display_name": "Coolant temp (°F)",
+      "filter_type": "range",
+      "show_in_profile": false
+    },
+    {
+      "column": "hydraulic_pressure_psi",
+      "display_name": "Hydraulic pressure (psi)",
+      "filter_type": "range",
+      "show_in_profile": false
+    },
+    {
+      "column": "fuel_burn_rate_gph",
+      "display_name": "Fuel burn rate (gph)",
+      "filter_type": "range",
+      "show_in_profile": false
+    },
+    {
+      "column": "load_factor_pct",
+      "display_name": "Load factor (%)",
+      "filter_type": "range",
+      "show_in_profile": false
+    },
+    {
+      "column": "idle_ratio_pct",
+      "display_name": "Idle ratio (%)",
+      "filter_type": "range",
+      "show_in_profile": false
+    },
+    {
+      "column": "ambient_temp_f",
+      "display_name": "Ambient temp (°F)",
+      "filter_type": "range",
+      "show_in_profile": false
+    },
+    {
+      "column": "actual_rul_days_holdout",
+      "display_name": "Actual RUL (days) — holdout reference only",
+      "filter_type": "range",
+      "show_in_profile": true
+    }
+  ],
+  "score_filter": {
+    "show": true,
+    "display_name": "Predicted Remaining Useful Life (days)"
+  },
+  "top_explanation_filter": {
+    "show": true,
+    "display_name": "Top Explanation Feature",
+    "explanation_slot": 1
+  }
+}

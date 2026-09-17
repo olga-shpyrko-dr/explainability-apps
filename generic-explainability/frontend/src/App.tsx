@@ -11,6 +11,20 @@ import WordCloudPanel from "./components/WordCloudPanel";
 
 type Tab = "groups" | "row";
 
+// A regression target (e.g. days-to-failure) isn't a 0-1 probability, so it
+// shouldn't be rendered as a percentage. Heuristic: probability iff the full
+// population's mean and p90 both fall within [0, 1].
+function formatScoreStat(
+  value: number | null,
+  fullStats: { mean: number | null; p90: number | null }
+): string {
+  if (value == null) return "—";
+  const isProbability =
+    fullStats.mean != null && fullStats.mean >= 0 && fullStats.mean <= 1 &&
+    fullStats.p90 != null && fullStats.p90 <= 1;
+  return isProbability ? `${(value * 100).toFixed(1)}%` : value.toFixed(2);
+}
+
 const C = {
   green:  "#81FBA5",
   black:  "#0B0B0B",
@@ -170,9 +184,9 @@ function App() {
               <>
                 <StatCard label="COHORT SIZE" value={`${profile.n_rows.toLocaleString()} ${entityLabelPlural}`} accent />
                 <StatCard label="% OF TOTAL"  value={`${profile.pct_of_total.toFixed(1)}%`} />
-                <StatCard label="MEAN SCORE"  value={profile.score_stats.mean != null ? (profile.score_stats.mean * 100).toFixed(1) + "%" : "—"} />
-                <StatCard label="MEDIAN SCORE" value={profile.score_stats.median != null ? (profile.score_stats.median * 100).toFixed(1) + "%" : "—"} />
-                <StatCard label="POPULATION MEAN" value={profile.score_stats_full.mean != null ? (profile.score_stats_full.mean * 100).toFixed(1) + "%" : "—"} />
+                <StatCard label="MEAN SCORE"  value={formatScoreStat(profile.score_stats.mean, profile.score_stats_full)} />
+                <StatCard label="MEDIAN SCORE" value={formatScoreStat(profile.score_stats.median, profile.score_stats_full)} />
+                <StatCard label="POPULATION MEAN" value={formatScoreStat(profile.score_stats_full.mean, profile.score_stats_full)} />
               </>
             ) : null}
           </div>
