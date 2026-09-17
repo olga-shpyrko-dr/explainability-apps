@@ -52,14 +52,21 @@ cp backend/narrative_config.manufacturing-example.json backend/narrative_config.
 Then add an LLM provider (see the main `.env.template`) if you want the AI
 narrative, and start the app as usual.
 
-### Known limitation exercised by this example
+### Using `OUTCOME_COL` with a regression target
 
 `OUTCOME_COL` (optional; enables an "observed outcome rate" line in the
-narrative) is formatted in `narrative.py` as a **percentage**
-(`f"{outcome_rate:.1%}"`), which only makes sense for a binary 0/1 column. For
-a continuous target like `rul_days`, `pd.Series.mean()` still computes fine
-(e.g. a mean of 12.3 days), but it would render as a nonsensical percentage
-("1230.0%"). This example leaves `OUTCOME_COL` unset and instead carries the
-true holdout value as a plain reference column
-(`actual_rul_days_holdout`, shown in the cohort profile) so predicted-vs-actual
-is still visible without exercising the bug.
+narrative) supports both binary 0/1 columns and continuous regression
+targets — `narrative.py` picks the right formatting based on the active
+`narrative_config.json`'s `target_type` field: `"classification"` (the
+default) renders it as a percentage, `"regression"` renders it as a plain
+number in the units given by `score_unit_label`/`score_unit_suffix`.
+
+If you enable `OUTCOME_COL` for a regression project, make sure
+`narrative_config.json` sets `"target_type": "regression"` (and, for
+consistent row-level formatting, `score_unit_label`/`score_unit_suffix`) —
+without it, `target_type` defaults to `"classification"` and the value is
+formatted as a percentage regardless of the column's actual scale. This
+example's own `narrative_config.manufacturing-example.json` template does
+not set `target_type`, so it leaves `OUTCOME_COL` unset and instead carries
+the true holdout value as a plain reference column
+(`actual_rul_days_holdout`, shown in the cohort profile).

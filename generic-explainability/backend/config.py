@@ -34,7 +34,10 @@ class Settings(BaseSettings):
     row_id_col: str = "id"
     # prediction_col: auto-detected from first column ending in _PREDICTION if not set
     prediction_col: Optional[str] = None
-    outcome_col: Optional[str] = None          # binary 0/1 outcome in training data
+    outcome_col: Optional[str] = None          # outcome in training data — 0/1 for
+                                                # classification, numeric for regression
+                                                # (requires target_type: "regression" in
+                                                # narrative_config.json)
     max_explanations: int = 4
 
     # ------------------------------------------------------------------
